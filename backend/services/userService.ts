@@ -1,0 +1,147 @@
+import bcrypt from 'bcrypt';
+import { query } from './dbService';
+
+// User interface
+export interface User {
+  id: number;
+  iemis_code: string;
+  email: string | null;
+  password_hash: string;
+  role: 'admin' | 'school';
+  school_id: number | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+// Create a new user
+export async function createUser(userData: { 
+  iemis_code: string;
+  email?: string; 
+  password: string; 
+  role: 'admin' | 'school'; 
+  school_id?: number 
+}): Promise<User> {
+  // Hash the password
+  const saltRounds = 10;
+  const password_hash = await bcrypt.hash(userData.password, saltRounds);
+  
+  const result = await query(
+    `INSERT INTO users (iemis_code, email, password_hash, role, school_id) 
+     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+    [userData.iemis_code, userData.email || null, password_hash, userData.role, userData.school_id || null]
+  );
+  
+  return result.rows[0];
+}
+
+// Get user by IEMIS Code
+export async function getUserByIemisCode(iemisCode: string): Promise<User | null> {
+  const result = await query(
+    `SELECT * FROM users 
+     WHERE iemis_code = $1`,
+    [iemisCode]
+  );
+  return result.rows[0] || null;
+}
+
+// Get user by Email
+export async function getUserByEmail(email: string): Promise<User | null> {
+  const result = await query(
+    `SELECT * FROM users 
+     WHERE email = $1`,
+    [email]
+  );
+  return result.rows[0] || null;
+}
+
+// Get user by ID
+export async function getUserById(id: number): Promise<User | null> {
+  const result = await query('SELECT * FROM users WHERE id = $1', [id]);
+  return result.rows[0] || null;
+}
+
+// Get users by school ID
+export async function getUsersBySchoolId(schoolId: number): Promise<User[]> {
+  const result = await query(
+    `SELECT * FROM users 
+     WHERE school_id = $1 
+     ORDER BY id`,
+    [schoolId]
+  );
+  return result.rows;
+}
+
+// Update user
+export async function updateUser(id: number, userData: Partial<{
+  iemis_code: string;
+  email: string | null;
+  role: 'admin' | 'school';
+  school_id: number | null;
+}>): Promise<User | null> {
+  const fields = [];
+  const values = [];
+  let index = 1;
+  
+  if (userData.iemis_code !== undefined) {
+    fields.push(`iemis_code = $${index++}`);
+    values.push(userData.iemis_code);
+  }
+  
+  if (userData.email !== undefined) {
+    fields.push(`email = $${index++}`);
+    values.push(userData.email);
+  }
+  
+  if (userData.role !== undefined) {
+    fields.push(`role = $${index++}`);
+    values.push(userData.role);
+  }
+  
+  if (userData.school_id !== undefined) {
+    fields.push(`school_id = $${index++}`);
+    values.push(userData.school_id);
+  }
+  
+  fields.push(`updated_at = NOW()`);
+  
+  if (fields.length === 1) {
+    // Only updated_at would be updated, so nothing to do
+    return getUserById(id);
+  }
+  
+  const result = await query(
+    `UPDATE users SET ${fields.join(', ')} WHERE id = $${index} RETURNING *`,
+    [...values, id]
+  );
+  
+  return result.rows[0] || null;
+}
+
+// Delete user
+export async function deleteUser(id: number): Promise<User | null> {
+  const result = await query('DELETE FROM users WHERE id = $1 RETURNING *', [id]);
+  return result.rows[0] || null;
+}
+
+// Get all users
+export async function getAllUsers(): Promise<User[]> {
+  const result = await query('SELECT * FROM users ORDER BY id');
+  return result.rows;
+}
+
+// Verify password
+export async function verifyPassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
+  return bcrypt.compare(plainPassword, hashedPassword);
+}
+
+export default {
+  createUser,
+  getUserByIemisCode,
+  getUserByEmail,
+  getUserById,
+  getUsersBySchoolId,
+  updateUser,
+  deleteUser,
+  getAllUsers,
+  verifyPassword
+};

@@ -1,0 +1,5 @@
+{
+  "name": "14 Multi-School Result Management System Grade 11 & 12",
+  "description": "A comprehensive result management system for multiple schools, featuring separate dashboards for administrators and school staff. Includes modules for managing schools, students, subjects, marks, and generating reports for Grade 11.",
+  "requestFramePermissions": []
+}

@@ -1,0 +1,157 @@
+Multi-School Result Management System - Project Structure
+
+.
+├── backend/
+│   ├── routes/
+│   │   ├── schools.ts
+│   │   ├── students.ts
+│   │   ├── subjects.ts
+│   │   └── users.ts
+│   ├── services/
+│   │   ├── dbService.ts
+│   │   ├── mockDbService.ts
+│   │   └── userService.ts
+│   └── server.ts
+├── components/
+│   ├── charts/
+│   │   ├── BarChart.tsx
+│   │   └── PieChart.tsx
+│   ├── forms/
+│   │   └── StudentForm.tsx
+│   ├── icons/
+│   │   ├── AcademicCapIcon.tsx
+│   │   ├── ArrowLeftIcon.tsx
+│   │   ├── ArrowLeftOnRectangleIcon.tsx
+│   │   ├── Bars3Icon.tsx
+│   │   ├── BookOpenIcon.tsx
+│   │   ├── BookmarkSquareIcon.tsx
+│   │   ├── BriefcaseIcon.tsx
+│   │   ├── BuildingOfficeIcon.tsx
+│   │   ├── CalculatorIcon.tsx
+│   │   ├── ChartPieIcon.tsx
+│   │   ├── CheckBadgeIcon.tsx
+│   │   ├── CheckCircleIcon.tsx
+│   │   ├── CircleStackIcon.tsx
+│   │   ├── ClipboardDocumentCheckIcon.tsx
+│   │   ├── ClipboardDocumentListIcon.tsx
+│   │   ├── Cog6ToothIcon.tsx
+│   │   ├── ComputerDesktopIcon.tsx
+│   │   ├── CreditCardIcon.tsx
+│   │   ├── DocumentArrowDownIcon.tsx
+│   │   ├── DocumentArrowUpIcon.tsx
+│   │   ├── DocumentChartBarIcon.tsx
+│   │   ├── EnvelopeIcon.tsx
+│   │   ├── ExclamationCircleIcon.tsx
+│   │   ├── ExclamationTriangleIcon.tsx
+│   │   ├── EyeIcon.tsx
+│   │   ├── EyeSlashIcon.tsx
+│   │   ├── IdentificationIcon.tsx
+│   │   ├── MegaphoneIcon.tsx
+│   │   ├── MoonIcon.tsx
+│   │   ├── NebLogo.tsx
+│   │   ├── NewspaperIcon.tsx
+│   │   ├── PaintBrushIcon.tsx
+│   │   ├── PencilIcon.tsx
+│   │   ├── PrinterIcon.tsx
+│   │   ├── QueueListIcon.tsx
+│   │   ├── ShieldCheckIcon.tsx
+│   │   ├── SunIcon.tsx
+│   │   ├── TableCellsIcon.tsx
+│   │   ├── TrashIcon.tsx
+│   │   ├── UserCircleIcon.tsx
+│   │   ├── UserGroupIcon.tsx
+│   │   ├── UserPlusIcon.tsx
+│   │   ├── WhatsAppIcon.tsx
+│   │   ├── WrenchScrewdriverIcon.tsx
+│   │   ├── XMarkIcon.tsx
+│   │   └── YoutubeIcon.tsx
+│   ├── Button.tsx
+│   ├── CSVUploadModal.tsx
+│   ├── Card.tsx
+│   ├── IconButton.tsx
+│   ├── InputField.tsx
+│   ├── Loader.tsx
+│   ├── Modal.tsx
+│   ├── Pagination.tsx
+│   ├── Select.tsx
+│   ├── SubjectCSVUploadModal.tsx
+│   ├── Table.tsx
+│   ├── Toast.tsx
+│   └── ToggleSwitch.tsx
+├── config/
+│   └── db.ts
+├── context/
+│   ├── AppContext.tsx
+│   ├── AuthContext.tsx
+│   ├── DataContext.tsx
+│   ├── PageTitleContext.tsx
+│   └── ThemeContext.tsx
+├── data/
+│   └── initialData.ts
+├── hooks/
+│   └── useMockData.ts
+├── init-scripts/
+│   └── 01-init-schema.sql
+├── layouts/
+│   ├── DashboardLayout.tsx
+│   ├── Footer.tsx
+│   ├── Navbar.tsx
+│   ├── PublicLayout.tsx
+│   ├── PublicNavbar.tsx
+│   └── Sidebar.tsx
+├── pages/
+│   ├── admin/
+│   │   ├── AdminDashboardPage.tsx
+│   │   ├── AdminSettingsPage.tsx
+│   │   ├── ChangelogPage.tsx
+│   │   ├── GradeSheetPage.tsx
+│   │   ├── GradeWiseLedgerPage.tsx
+│   │   ├── ManageSchoolsPage.tsx
+│   │   ├── ManageStudentsPage.tsx
+│   │   ├── ManageSubjectsPage.tsx
+│   │   ├── MarkWiseLedgerPage.tsx
+│   │   ├── MarksEntryAdminPage.tsx
+│   │   ├── SchoolDashboardViewerPage.tsx
+│   │   ├── SchoolSettingsEditorPage.tsx
+│   │   └── SubjectAssignPage.tsx
+│   ├── auth/
+│   │   ├── ForgotPasswordPage.tsx
+│   │   └── LoginPage.tsx
+│   ├── common/
+│   │   └── StudentProfilePage.tsx
+│   ├── print/
+│   │   ├── PrintAllMarksheetsPage.tsx
+│   │   └── PrintMarksheetPage.tsx
+│   ├── public/
+│   │   └── HomePage.tsx
+│   └── school/
+│       ├── MarksEntryPage.tsx
+│       ├── SchoolDashboardPage.tsx
+│       ├── SchoolGradeSheetPage.tsx
+│       ├── SchoolGradeWiseLedgerPage.tsx
+│       ├── SchoolManageSubjectsPage.tsx
+│       ├── SchoolMarkWiseLedgerPage.tsx
+│       ├── SchoolSettingsPage.tsx
+│       ├── SchoolStudentsPage.tsx
+│       ├── SchoolSubjectAssignPage.tsx
+│       └── SubjectOfferingPage.tsx
+├── scripts/
+│   ├── create-database.ts
+│   ├── init-db.ts
+│   ├── populate-db.ts
+│   ├── test-db-connection.ts
+│   ├── test-user-api.ts
+│   └── test-user-service.ts
+├── services/
+│   ├── api.ts
+│   └── dataService.ts
+├── utils/
+│   └── gradeCalculator.ts
+├── App.tsx
+├── index.html
+├── index.tsx
+├── metadata.json
+├── package.json
+├── tsconfig.json
+├── types.ts
+└── vite.config.ts
