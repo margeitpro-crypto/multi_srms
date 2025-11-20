@@ -142,7 +142,7 @@ const MarkWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                         <img src={processedLedgerData.school.logoUrl} alt="School Logo" className="h-24 w-24 mx-auto mb-4 rounded-full"/>
                         <h2 className="text-xl font-bold text-red-600">{processedLedgerData.school.name}</h2>
                         <p className="text-sm font-medium text-red-600">{processedLedgerData.school.municipality}</p>
-                        <p className="text-sm font-medium text-red-600">GRADE {selectedClass}</p>
+                        <p className="text-sm font-medium text-red-600">YEAR : {selectedYear} GRADE {selectedClass}</p>
                     </div>
 
                     <div className="flex justify-end space-x-2 mb-4 print:hidden">
