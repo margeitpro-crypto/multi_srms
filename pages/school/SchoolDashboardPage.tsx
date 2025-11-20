@@ -19,7 +19,7 @@ import { ExclamationTriangleIcon } from '../../components/icons/ExclamationTrian
 const DetailItem: React.FC<{ label: string, value: React.ReactNode }> = ({ label, value }) => (
     <div>
         <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</p>
-        <p className="text-sm text-gray-800 dark:text-white break-words">{value}</p>
+        <div className="text-sm text-gray-800 dark:text-white break-words">{value}</div>
     </div>
 );
 

@@ -75,4 +75,28 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
+// DELETE /api/subjects/:id - Delete a subject
+router.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid subject ID' });
+    }
+    
+    const deletedSubject = await subjectsService.deleteSubject(id);
+    if (!deletedSubject) {
+      return res.status(404).json({ error: 'Subject not found' });
+    }
+    
+    res.json({ message: 'Subject deleted successfully', subject: deletedSubject });
+  } catch (err: any) {
+    console.error('Error deleting subject:', err);
+    if (err.code === '23503') { // Foreign key violation
+      res.status(400).json({ error: 'Cannot delete subject because it is referenced by student marks. Please delete all marks for this subject first.' });
+    } else {
+      res.status(500).json({ error: 'Failed to delete subject' });
+    }
+  }
+});
+
 export default router;

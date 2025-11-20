@@ -76,9 +76,10 @@ const SubjectAssignPage: React.FC<{ school?: School, isReadOnly?: boolean }> = (
                 // Convert null to empty string for the select component
                 setSelectedExtraCreditSubjectId(assignmentData.extraCreditSubjectId ? String(assignmentData.extraCreditSubjectId) : '');
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error loading student assignments:', error);
-            addToast('Failed to load student assignments. Please try again.', 'error');
+            const errorMessage = error.response?.data?.error || error.message || 'Failed to load student assignments. Please try again.';
+            addToast(`Error loading assignments: ${errorMessage}`, 'error');
         } finally {
             setIsLoadingAssignments(false);
         }
@@ -166,9 +167,10 @@ const SubjectAssignPage: React.FC<{ school?: School, isReadOnly?: boolean }> = (
             setExtraCreditAssignments(prev => ({ ...prev, [selectedStudentId]: extraCreditId }));
             
             addToast(`Subject registration for student has been submitted and saved successfully.`, 'success');
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error saving subject assignments:', error);
-            addToast('Failed to save subject assignments. Please try again.', 'error');
+            const errorMessage = error.response?.data?.error || error.message || 'Failed to save subject assignments. Please try again.';
+            addToast(`Error saving assignments: ${errorMessage}`, 'error');
         }
     };
     

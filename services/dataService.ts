@@ -136,6 +136,15 @@ export const subjectsApi = {
       console.error('Error creating subject:', error);
       throw error;
     }
+  },
+  
+  delete: async (id: number): Promise<void> => {
+    try {
+      await api.delete(`/subjects/${id}`);
+    } catch (error) {
+      console.error(`Error deleting subject with id ${id}:`, error);
+      throw error;
+    }
   }
 };
 
@@ -218,6 +227,15 @@ export const subjectAssignmentsApi = {
       await api.post(`/subject-assignments/${studentId}/${academicYear}`, { subjectIds, extraCreditSubjectId });
     } catch (error) {
       console.error(`Error saving subject assignments for student ${studentId} in year ${academicYear}:`, error);
+      throw error;
+    }
+  },
+  
+  deleteAssignments: async (studentId: string, academicYear: string): Promise<void> => {
+    try {
+      await api.delete(`/subject-assignments/${studentId}/${academicYear}`);
+    } catch (error) {
+      console.error(`Error deleting subject assignments for student ${studentId} in year ${academicYear}:`, error);
       throw error;
     }
   }

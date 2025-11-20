@@ -75,7 +75,6 @@ const Navbar: React.FC<NavbarProps> = ({ toggleSidebar }) => {
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
           >
             <img className="h-8 w-8 rounded-full object-cover" src="https://picsum.photos/100" alt="Your avatar" />
-            <span className="text-gray-700 dark:text-gray-200 font-medium hidden sm:block">{roleToDisplay} User</span>
           </button>
 
           {/* Dropdown menu */}

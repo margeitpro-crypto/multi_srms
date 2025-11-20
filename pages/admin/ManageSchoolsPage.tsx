@@ -280,9 +280,7 @@ const ManageSchoolsPage: React.FC = () => {
 
   return (
     <div className="animate-fade-in">
-      <div className="flex justify-between items-center mb-6">
-        <Button onClick={handleAdd}>Add School</Button>
-      </div>
+      
       
       <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4 mb-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
         <div className="w-full md:w-auto">
@@ -306,6 +304,9 @@ const ManageSchoolsPage: React.FC = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
             containerClassName="flex-grow"
         />
+        <div className="flex justify-between items-center mb-6">
+          <Button onClick={handleAdd}>Add School</Button>
+        </div>
       </div>
 
       <Table<School>

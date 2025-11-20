@@ -184,11 +184,22 @@ const ManageSubjectsPage: React.FC<{ isReadOnly?: boolean }> = ({ isReadOnly = f
     setIsConfirmModalOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (subjectToDelete) {
-      setSubjects(prev => prev.filter(s => s.id !== subjectToDelete.id));
-      addToast(`${subjectToDelete.name} deleted successfully.`, 'error');
-      setSubjectToDelete(null);
+      try {
+        // Delete from API
+        await subjectsApi.delete(subjectToDelete.id);
+        
+        // Update local state
+        setSubjects(prev => prev.filter(s => s.id !== subjectToDelete.id));
+        addToast(`${subjectToDelete.name} deleted successfully.`, 'success');
+      } catch (error: any) {
+        console.error('Error deleting subject:', error);
+        const errorMessage = error.response?.data?.error || error.message || 'Failed to delete subject. Please try again.';
+        addToast(`Error deleting subject: ${errorMessage}`, 'error');
+      } finally {
+        setSubjectToDelete(null);
+      }
     }
   };
 

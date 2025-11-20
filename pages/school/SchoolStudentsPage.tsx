@@ -157,21 +157,23 @@ const SchoolStudentsPage: React.FC<{ isReadOnly?: boolean }> = ({ isReadOnly = f
     setCurrentPage(1);
   };
   
-  const handleUploadSuccess = (newStudents: Student[]) => {
-    if (!loggedInSchool) return;
-
-    const currentPlan = loggedInSchool.subscriptionPlan || 'Basic';
-    const limit = PLAN_LIMITS[currentPlan];
-    const currentStudentCount = allStudents.filter(s => s.school_id === loggedInSchool.id).length;
-    
-    if (currentStudentCount + newStudents.length > limit) {
-        const remainingSlots = Math.max(0, limit - currentStudentCount);
-        addToast(`Upload failed. This would exceed your student limit of ${limit} for the ${currentPlan} plan. You can add up to ${remainingSlots} more students.`, 'error');
-        return;
+  const handleUploadSuccess = async (newStudents: Student[]) => {
+    try {
+      // Save each student to the database
+      const savedStudents = [];
+      for (const student of newStudents) {
+        // Save to database - the API expects the frontend Student type
+        const savedStudent = await studentsApi.create(student);
+        savedStudents.push(savedStudent);
+      }
+      
+      // Update local state with saved students
+      setAllStudents(prevStudents => [...(prevStudents || []), ...savedStudents]);
+      addToast(`${savedStudents.length} students uploaded and saved successfully!`, 'success');
+    } catch (error) {
+      console.error('Error saving students:', error);
+      addToast('Failed to save students to database. Please try again.', 'error');
     }
-
-    setAllStudents(prevStudents => [...(prevStudents || []), ...newStudents]);
-    addToast(`${newStudents.length} students uploaded successfully!`, 'success');
   };
   
   const filteredStudents = useMemo(() => {

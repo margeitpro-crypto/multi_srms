@@ -222,14 +222,9 @@ const ManageUserPage: React.FC = () => {
   return (
     <div className="p-4 md:p-6">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 md:p-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 md:mb-0">User Management</h2>
-          <Button onClick={handleAdd}>
-            Add New User
-          </Button>
-        </div>
+        
 
-        <div className="mb-6">
+        <div className="flex justify-between items-center mb-6">
           <InputField
             id="search"
             label="Search Users"
@@ -237,7 +232,13 @@ const ManageUserPage: React.FC = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
+          <div className="flex justify-between items-center mb-6">
+          <Button onClick={handleAdd}>
+            Add New User
+          </Button>
         </div>
+        </div>
+
 
         {loading ? (
           <div className="flex justify-center items-center h-64">

@@ -153,9 +153,10 @@ const MarksEntryAdminPage: React.FC = () => {
                     setIsLoading(false);
                     setDataLoaded(true);
                     addToast(`Loaded ${studentsWithAssignments.length} students with subject assignments for Grade ${selectedClass}.`, 'info');
-                } catch (error) {
+                } catch (error: any) {
                     console.error('Error loading student assignments:', error);
-                    addToast('Failed to load student assignments. Please try again.', 'error');
+                    const errorMessage = error.response?.data?.error || error.message || 'Failed to load student assignments. Please try again.';
+                    addToast(`Error loading assignments: ${errorMessage}`, 'error');
                     setIsLoading(false);
                 }
             };
@@ -263,9 +264,10 @@ const MarksEntryAdminPage: React.FC = () => {
                 
                 setMarks(clearedMarks);
                 addToast("Marks deleted successfully!", "success");
-            } catch (error) {
+            } catch (error: any) {
                 console.error('Error deleting marks:', error);
-                addToast("Failed to delete marks. Please try again.", "error");
+                const errorMessage = error.response?.data?.error || error.message || 'Failed to delete marks. Please try again.';
+                addToast(`Error deleting marks: ${errorMessage}`, "error");
             }
         }
     };

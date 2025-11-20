@@ -93,9 +93,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 setAssignments({});
                 setExtraCreditAssignments({});
                 setMarks({});
-            } catch (error) {
+            } catch (error: any) {
                 console.error('Error loading data:', error);
-                addToast('Failed to load data from the server. Please check your connection and try again.', 'error');
+                const errorMessage = error.response?.data?.error || error.message || 'Failed to load data from the server. Please check your connection and try again.';
+                addToast(`Error loading data: ${errorMessage}`, 'error');
                 // No fallback to mock data - show error instead
             } finally {
                 setIsDataLoading(false);
@@ -165,9 +166,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setGrades(prevGrades => ({ ...prevGrades, ...newGrades }));
             
             addToast('Marks saved successfully!', 'success');
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error saving marks to API:', error);
-            addToast('Failed to save marks to the database. Please try again.', 'error');
+            const errorMessage = error.response?.data?.error || error.message || 'Failed to save marks to the database. Please try again.';
+            addToast(`Error saving marks: ${errorMessage}`, 'error');
         }
     };
     
@@ -188,9 +190,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             });
             
             addToast('Marks deleted successfully!', 'success');
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error deleting marks from API:', error);
-            addToast('Failed to delete marks from the database. Please try again.', 'error');
+            const errorMessage = error.response?.data?.error || error.message || 'Failed to delete marks from the database. Please try again.';
+            addToast(`Error deleting marks: ${errorMessage}`, 'error');
             throw error;
         }
     };

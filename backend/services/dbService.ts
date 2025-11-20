@@ -284,40 +284,45 @@ export const studentsService = {
   
   // Create a new student
   async createStudent(studentData: any) {
-    const result = await query(
-      `INSERT INTO students (
-        student_system_id, school_id, name, dob, gender, grade, roll_no, photo_url,
-        academic_year, symbol_no, alph, registration_id, dob_bs, father_name,
-        mother_name, mobile_no
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *`,
-      [
-        studentData.student_system_id, studentData.school_id, studentData.name, studentData.dob,
-        studentData.gender, studentData.grade, studentData.roll_no, studentData.photo_url,
-        studentData.academic_year, studentData.symbol_no, studentData.alph, studentData.registration_id,
-        studentData.dob_bs, studentData.father_name, studentData.mother_name, studentData.mobile_no
-      ]
-    );
-    
-    const student = result.rows[0];
-    return {
-      id: student.student_system_id, // Using student_system_id as the frontend id
-      school_id: student.school_id,
-      name: student.name,
-      dob: student.dob,
-      gender: student.gender,
-      grade: student.grade,
-      roll_no: student.roll_no,
-      photo_url: student.photo_url,
-      created_at: student.created_at,
-      year: student.academic_year,
-      symbol_no: student.symbol_no,
-      alph: student.alph,
-      registration_id: student.registration_id,
-      dob_bs: student.dob_bs,
-      father_name: student.father_name,
-      mother_name: student.mother_name,
-      mobile_no: student.mobile_no
-    };
+    try {
+      const result = await query(
+        `INSERT INTO students (
+          student_system_id, school_id, name, dob, gender, grade, roll_no, photo_url,
+          academic_year, symbol_no, alph, registration_id, dob_bs, father_name,
+          mother_name, mobile_no
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *`,
+        [
+          studentData.id, studentData.school_id, studentData.name, studentData.dob,
+          studentData.gender, studentData.grade, studentData.roll_no, studentData.photo_url,
+          studentData.year, studentData.symbol_no, studentData.alph, studentData.registration_id,
+          studentData.dob_bs, studentData.father_name, studentData.mother_name, studentData.mobile_no
+        ]
+      );
+      
+      const student = result.rows[0];
+      return {
+        id: student.student_system_id, // Using student_system_id as the frontend id
+        school_id: student.school_id,
+        name: student.name,
+        dob: student.dob,
+        gender: student.gender,
+        grade: student.grade,
+        roll_no: student.roll_no,
+        photo_url: student.photo_url,
+        created_at: student.created_at,
+        year: student.academic_year,
+        symbol_no: student.symbol_no,
+        alph: student.alph,
+        registration_id: student.registration_id,
+        dob_bs: student.dob_bs,
+        father_name: student.father_name,
+        mother_name: student.mother_name,
+        mobile_no: student.mobile_no
+      };
+    } catch (error) {
+      console.error('Database error creating student:', error);
+      throw error;
+    }
   },
   
   // Update a student
@@ -442,6 +447,31 @@ export const subjectsService = {
         passMarks: subject.internal_pass_marks
       }
     };
+  },
+  
+  // Delete a subject
+  async deleteSubject(id: number) {
+    const result = await query('DELETE FROM subjects WHERE id = $1 RETURNING *', [id]);
+    if (!result.rows[0]) return null;
+    
+    const subject = result.rows[0];
+    return {
+      id: subject.id,
+      name: subject.name,
+      grade: subject.grade,
+      theory: {
+        subCode: subject.theory_sub_code,
+        credit: parseFloat(subject.theory_credit),
+        fullMarks: subject.theory_full_marks,
+        passMarks: subject.theory_pass_marks
+      },
+      internal: {
+        subCode: subject.internal_sub_code,
+        credit: parseFloat(subject.internal_credit),
+        fullMarks: subject.internal_full_marks,
+        passMarks: subject.internal_pass_marks
+      }
+    };
   }
 };
 
@@ -506,6 +536,22 @@ export const subjectAssignmentsService = {
     }
     
     return subjectId;
+  },
+  
+  // Delete subject assignments for a student in a specific academic year
+  async deleteStudentAssignments(studentId: number, academicYear: number) {
+    await query(
+      'DELETE FROM student_subject_assignments WHERE student_id = $1 AND academic_year = $2',
+      [studentId, academicYear]
+    );
+  },
+  
+  // Delete extra credit subject assignment for a student in a specific academic year
+  async deleteStudentExtraCreditAssignment(studentId: number, academicYear: number) {
+    await query(
+      'DELETE FROM extra_credit_assignments WHERE student_id = $1 AND academic_year = $2',
+      [studentId, academicYear]
+    );
   },
   
   // Get student database ID by student system ID
