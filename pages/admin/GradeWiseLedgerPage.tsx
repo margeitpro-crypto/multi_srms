@@ -69,18 +69,29 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
     const processedLedgerData = useMemo(() => {
         if (!ledgerData) return null;
         
+        // Get all subject IDs that are assigned to at least one student in the current selection
+        const assignedSubjectIdsSet = new Set<number>();
+        const studentsWithGrades = ledgerData.students.map(student => {
+            const studentGrades = allGrades[student.id];
+            const assignedSubjectIds = new Set(assignments[student.id] || []);
+            
+            // Add assigned subject IDs to the overall set
+            assignedSubjectIds.forEach(id => assignedSubjectIdsSet.add(id));
+            
+            return {
+                ...student,
+                studentGrades,
+                assignedSubjectIds
+            };
+        });
+        
+        // Filter subjects to only include those assigned to at least one student
+        const assignedSubjects = ledgerData.subjects.filter(subject => assignedSubjectIdsSet.has(subject.id));
+        
         return {
             ...ledgerData,
-            students: ledgerData.students.map(student => {
-                const studentGrades = allGrades[student.id];
-                const assignedSubjectIds = new Set(assignments[student.id] || []);
-                
-                return {
-                    ...student,
-                    studentGrades,
-                    assignedSubjectIds
-                };
-            })
+            subjects: assignedSubjects,
+            students: studentsWithGrades
         };
     }, [ledgerData, allGrades, assignments]);
 
