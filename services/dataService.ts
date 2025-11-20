@@ -344,6 +344,47 @@ export const academicYearsApi = {
   }
 };
 
+// Application Settings API
+export const applicationSettingsApi = {
+  getAll: async (): Promise<any[]> => {
+    try {
+      const response = await api.get<any[]>('/application-settings');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching application settings:', error);
+      throw error;
+    }
+  },
+  
+  getByKey: async (key: string): Promise<any> => {
+    try {
+      const response = await api.get<any>(`/application-settings/${key}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching application setting with key ${key}:`, error);
+      throw error;
+    }
+  },
+  
+  saveSettings: async (settings: { [key: string]: any }): Promise<void> => {
+    try {
+      await api.post('/application-settings', { settings });
+    } catch (error) {
+      console.error('Error saving application settings:', error);
+      throw error;
+    }
+  },
+  
+  saveSetting: async (key: string, value: any, description?: string): Promise<void> => {
+    try {
+      await api.put(`/application-settings/${key}`, { value, description });
+    } catch (error) {
+      console.error(`Error saving application setting with key ${key}:`, error);
+      throw error;
+    }
+  }
+};
+
 export default {
   schools: schoolsApi,
   students: studentsApi,
@@ -351,5 +392,6 @@ export default {
   users: usersApi,
   subjectAssignments: subjectAssignmentsApi,
   marks: marksApi,
-  academicYears: academicYearsApi
+  academicYears: academicYearsApi,
+  applicationSettings: applicationSettingsApi
 };

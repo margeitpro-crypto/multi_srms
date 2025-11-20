@@ -5,11 +5,13 @@ import { AcademicCapIcon } from '../components/icons/AcademicCapIcon';
 import { NebLogo } from '../components/icons/NebLogo';
 import { Bars3Icon } from '../components/icons/Bars3Icon';
 import { XMarkIcon } from '../components/icons/XMarkIcon';
+import { useData } from '../context/DataContext';
 
 const PublicNavbar: React.FC = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
+    const { appSettings } = useData();
     
     const navLinks = [
         { to: '/', text: 'Home' },
@@ -41,9 +43,13 @@ const PublicNavbar: React.FC = () => {
                     <div className="flex items-center">
                         <Link to="/" className="flex items-center space-x-2">
                             <div className="p-1 bg-primary-600 rounded-lg">
-                                <AcademicCapIcon className="h-8 w-8 text-white" />
+                                {appSettings.appLogo ? (
+                                    <img src={appSettings.appLogo} alt="App Logo" className="h-8 w-8 object-contain" />
+                                ) : (
+                                    <AcademicCapIcon className="h-8 w-8 text-primary-600" />
+                                )}
                             </div>
-                            <span className="text-xl font-bold text-gray-900 dark:text-white hidden sm:block">ResultSys</span>
+                            <span className="text-xl font-bold text-gray-900 dark:text-white hidden sm:block">{appSettings.appName}</span>
                         </Link>
                     </div>
 
@@ -102,8 +108,12 @@ const PublicNavbar: React.FC = () => {
             >
                 <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
                     <div className="flex items-center space-x-2">
-                        <AcademicCapIcon className="h-8 w-8 text-primary-600" />
-                        <span className="text-xl font-bold text-gray-900 dark:text-white">ResultSys</span>
+                        {appSettings.appLogo ? (
+                            <img src={appSettings.appLogo} alt="App Logo" className="h-8 w-8 object-contain" />
+                        ) : (
+                            <AcademicCapIcon className="h-8 w-8 text-primary-600" />
+                        )}
+                        <span className="text-xl font-bold text-gray-900 dark:text-white">{appSettings.appName}</span>
                     </div>
                     <button
                         onClick={() => setIsMenuOpen(false)}

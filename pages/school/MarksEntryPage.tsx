@@ -35,13 +35,13 @@ const MarksEntryPage: React.FC<{ school?: School }> = ({ school }) => {
 
     const { addToast } = useAppContext();
     // FIX: Get global marks state and setter from DataContext
-    const { students: MOCK_ADMIN_STUDENTS, subjects: MOCK_SUBJECTS, assignments: MOCK_STUDENT_SUBJECT_ASSIGNMENTS, marks: allMarks, updateStudentMarks, extraCreditAssignments, schoolPageVisibility, setAssignments, setExtraCreditAssignments, updateStudentGrades, academicYears } = useData();
+    const { students: MOCK_ADMIN_STUDENTS, subjects: MOCK_SUBJECTS, assignments: MOCK_STUDENT_SUBJECT_ASSIGNMENTS, marks: allMarks, updateStudentMarks, extraCreditAssignments, schoolPageVisibility, setAssignments, setExtraCreditAssignments, updateStudentGrades, academicYears, appSettings } = useData();
     const { loggedInSchool } = useAuth();
 
     const isReadOnly = schoolPageVisibility?.marksEntry === 'read-only';
     const schoolToDisplay = school || loggedInSchool;
 
-    const [selectedYear, setSelectedYear] = useState('2082');
+    const [selectedYear, setSelectedYear] = useState(appSettings.academicYear);
     const [selectedClass, setSelectedClass] = useState('11');
     const [isLoading, setIsLoading] = useState(false);
     const [dataLoaded, setDataLoaded] = useState(false);
@@ -51,6 +51,11 @@ const MarksEntryPage: React.FC<{ school?: School }> = ({ school }) => {
     const [marks, setMarks] = useState<MarksState>({});
     
     const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
+
+    // Update selectedYear when appSettings.academicYear changes
+    useEffect(() => {
+        setSelectedYear(appSettings.academicYear);
+    }, [appSettings.academicYear]);
 
     const handleLoad = () => {
         if (!schoolToDisplay) return;

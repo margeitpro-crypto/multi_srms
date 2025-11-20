@@ -16,11 +16,11 @@ const SubjectAssignPage: React.FC<{ school?: School, isReadOnly?: boolean }> = (
         setPageTitle('Assign Subjects to Student');
     }, [setPageTitle]);
 
-    const { schools, subjects: allSubjects, students: allStudents, assignments, extraCreditAssignments, setAssignments, setExtraCreditAssignments, academicYears } = useData();
+    const { schools, subjects: allSubjects, students: allStudents, assignments, extraCreditAssignments, setAssignments, setExtraCreditAssignments, academicYears, appSettings } = useData();
     const { addToast } = useAppContext();
 
     const [selectedSchoolId, setSelectedSchoolId] = useState<string>(school?.id.toString() || '');
-    const [selectedYear, setSelectedYear] = useState<string>('2082');
+    const [selectedYear, setSelectedYear] = useState<string>(appSettings.academicYear);
     const [selectedClass, setSelectedClass] = useState<string>('11');
     const [selectedStudentId, setSelectedStudentId] = useState<string>('');
     const [showAssigner, setShowAssigner] = useState<boolean>(false);
@@ -30,6 +30,11 @@ const SubjectAssignPage: React.FC<{ school?: School, isReadOnly?: boolean }> = (
     const [selectedExtraCreditSubjectId, setSelectedExtraCreditSubjectId] = useState<string>('');
     
     const [isLoadingAssignments, setIsLoadingAssignments] = useState<boolean>(false);
+
+    // Update selectedYear when appSettings.academicYear changes
+    useEffect(() => {
+        setSelectedYear(appSettings.academicYear);
+    }, [appSettings.academicYear]);
 
     const studentsInSchool = useMemo(() => {
         if (!selectedSchoolId || !allStudents || !selectedYear || !selectedClass) return [];

@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useData } from '../context/DataContext';
 
 import { ArrowLeftOnRectangleIcon } from '../components/icons/ArrowLeftOnRectangleIcon';
 import { BookOpenIcon } from '../components/icons/BookOpenIcon';
@@ -16,7 +17,6 @@ import { TableCellsIcon } from '../components/icons/TableCellsIcon';
 import { UserGroupIcon } from '../components/icons/UserGroupIcon';
 import { UserPlusIcon } from '../components/icons/UserPlusIcon';
 import { AcademicCapIcon } from '../components/icons/AcademicCapIcon';
-import { useData } from '../context/DataContext';
 
 
 interface SidebarProps {
@@ -26,7 +26,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
   const { userRole, logout } = useAuth();
-  const { schoolPageVisibility } = useData();
+  const { schoolPageVisibility, appSettings } = useData();
 
   const adminLinks = [
     { to: '/admin/dashboard', icon: <ChartPieIcon className="h-6 w-6" />, text: 'Admin Dashboard' },
@@ -78,8 +78,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
         } lg:translate-x-0 flex flex-col`}
       >
         <div className="flex items-center justify-center p-4 border-b dark:border-gray-700">
-          <AcademicCapIcon className="h-8 w-8 text-primary-600" />
-          <span className="ml-3 text-lg font-bold text-gray-800 dark:text-white">ResultSys</span>
+          {appSettings.appLogo ? (
+            <img src={appSettings.appLogo} alt="App Logo" className="h-8 w-8 object-contain" />
+          ) : (
+            <AcademicCapIcon className="h-8 w-8 text-primary-600" />
+          )}
+          <span className="ml-3 text-lg font-bold text-gray-800 dark:text-white">{appSettings.appName}</span>
         </div>
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
           {/* FIX: Inlined NavItem to fix TypeScript error with 'key' prop on inner component. */}

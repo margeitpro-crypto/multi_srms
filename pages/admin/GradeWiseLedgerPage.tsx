@@ -23,14 +23,19 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
     }, [setPageTitle]);
     
     // FIX: Get data from the central DataContext, including assignments.
-    const { schools, students: allStudents, subjects: allSubjects, grades: allGrades, assignments, academicYears, gradesRefreshTrigger } = useData();
+    const { schools, students: allStudents, subjects: allSubjects, grades: allGrades, assignments, academicYears, gradesRefreshTrigger, appSettings } = useData();
 
     const [selectedSchoolId, setSelectedSchoolId] = useState<string>(school?.id.toString() || '');
-    const [selectedYear, setSelectedYear] = useState('2082');
+    const [selectedYear, setSelectedYear] = useState(appSettings.academicYear);
     const [selectedClass, setSelectedClass] = useState('11');
     
     const [isLoading, setIsLoading] = useState(false);
     const [ledgerData, setLedgerData] = useState<LedgerData | null>(null);
+    
+    // Update selectedYear when appSettings.academicYear changes
+    useEffect(() => {
+        setSelectedYear(appSettings.academicYear);
+    }, [appSettings.academicYear]);
     
     // Auto-load data when school, year, or class changes
     useEffect(() => {

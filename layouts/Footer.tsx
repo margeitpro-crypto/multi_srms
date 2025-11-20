@@ -1,18 +1,20 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useData } from '../context/DataContext';
 
 const Footer: React.FC = () => {
+    const { appSettings } = useData();
+    
     return (
         <footer className="bg-white/80 dark:bg-gray-900/90 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 mt-auto">
             <div className="container mx-auto px-6 py-10">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-6">
                     <div className="text-center md:text-left space-y-2">
                          <h3 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-purple-600">
-                            ResultSys
+                            {appSettings.appName}
                         </h3>
                         <p className="text-gray-500 dark:text-gray-400 text-sm">
-                            &copy; {new Date().getFullYear()} ResultSys. All rights reserved.
+                            &copy; {new Date().getFullYear()} {appSettings.appName}. All rights reserved.
                         </p>
                          <p className="text-xs text-gray-400 dark:text-gray-500">
                             Making education management simpler.

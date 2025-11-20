@@ -8,6 +8,7 @@ import usersRouter from './routes/users';
 import subjectAssignmentsRouter from './routes/subjectAssignments';
 import marksRouter from './routes/marks';
 import academicYearsRouter from './routes/academicYears';
+import applicationSettingsRouter from './routes/applicationSettings';
 
 // Load environment variables
 dotenv.config();
@@ -47,6 +48,7 @@ app.use('/api/users', usersRouter);
 app.use('/api/subject-assignments', subjectAssignmentsRouter);
 app.use('/api/marks', marksRouter);
 app.use('/api/academic-years', academicYearsRouter);
+app.use('/api/application-settings', applicationSettingsRouter);
 
 // Health check endpoint
 app.get('/api/health', (req: Request, res: Response) => {

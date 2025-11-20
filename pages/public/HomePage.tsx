@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../../components/Button';
 import { ChartPieIcon } from '../../components/icons/ChartPieIcon';
@@ -10,6 +10,8 @@ import { UserGroupIcon } from '../../components/icons/UserGroupIcon';
 import { CalculatorIcon } from '../../components/icons/CalculatorIcon';
 import { CheckCircleIcon } from '../../components/icons/CheckCircleIcon';
 import { AcademicCapIcon } from '../../components/icons/AcademicCapIcon';
+import { useData } from '../../context/DataContext';
+import { useAppContext } from '../../context/AppContext';
 
 interface FeatureCardProps {
     icon: React.ReactNode;
@@ -91,7 +93,67 @@ const AcknowledgmentCard: React.FC<{ title: string; description: React.ReactNode
 );
 
 const HomePage: React.FC = () => {
+    const { appSettings } = useData();
+    const { addToast } = useAppContext();
+    const [activeTestimonial, setActiveTestimonial] = useState(0);
     const navigate = useNavigate();
+    
+    // Typing effect state
+    const fullText1 = "School's Result";
+    const fullText2 = "Management System";
+    const [typedText1, setTypedText1] = useState('');
+    const [typedText2, setTypedText2] = useState('');
+    const [typingComplete1, setTypingComplete1] = useState(false);
+    const [typingComplete2, setTypingComplete2] = useState(false);
+
+    useEffect(() => {
+        let typeInterval1: any;
+        let typeInterval2: any;
+        let loopInterval: any;
+
+        const startTyping = () => {
+            // Reset
+            setTypedText1('');
+            setTypedText2('');
+            setTypingComplete1(false);
+            setTypingComplete2(false);
+            
+            let currentIndex1 = 0;
+            typeInterval1 = setInterval(() => {
+                if (currentIndex1 <= fullText1.length) {
+                    setTypedText1(fullText1.slice(0, currentIndex1));
+                    currentIndex1++;
+                } else {
+                    clearInterval(typeInterval1);
+                    setTypingComplete1(true);
+
+                    // Start second line
+                    let currentIndex2 = 0;
+                    typeInterval2 = setInterval(() => {
+                        if (currentIndex2 <= fullText2.length) {
+                            setTypedText2(fullText2.slice(0, currentIndex2));
+                            currentIndex2++;
+                        } else {
+                            clearInterval(typeInterval2);
+                            setTypingComplete2(true);
+                        }
+                    }, 80);
+                }
+            }, 80);
+        };
+
+        // Run immediately on mount
+        startTyping();
+
+        // Set up loop to repeat every 1 minute (15000 ms)
+        loopInterval = setInterval(startTyping, 15000);
+
+        return () => {
+            clearInterval(typeInterval1);
+            clearInterval(typeInterval2);
+            clearInterval(loopInterval);
+        };
+    }, []);
 
     return (
         <div className="overflow-x-hidden">
@@ -112,9 +174,9 @@ const HomePage: React.FC = () => {
                         </div>
                         
                         <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-8 leading-[1.1]">
-                             School's Result <br />
+                             {typedText1} <br />
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 via-purple-600 to-pink-600 animate-gradient-x">
-                                Management System
+                                {typedText2} !
                             </span>
                         </h1>
                         
@@ -299,11 +361,11 @@ const HomePage: React.FC = () => {
                 <div className="container mx-auto px-6">
                     <div className="max-w-5xl mx-auto bg-gray-50 dark:bg-gray-800 rounded-[3rem] p-12 md:p-20 text-center shadow-inner">
                         <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-8">
-                            About ResultSys
+                            About {appSettings.appName}
                         </h2>
                         <div className="prose prose-lg mx-auto text-gray-600 dark:text-gray-300 leading-relaxed">
                             <p className="mb-8 text-xl">
-                                ResultSys was built to simplify the complex and time-consuming process of result management for schools in Nepal. 
+                                {appSettings.appName} was built to simplify the complex and time-consuming process of result management for schools in Nepal. 
                             </p>
                             <p className="text-base md:text-lg">
                                 Our mission is to provide an <span className="font-bold text-primary-600 dark:text-primary-400">affordable, easy-to-use, and powerful tool</span> that empowers educators to focus on what matters most: teaching. We are committed to strictly adhering to the standards set by the <span className="font-semibold">National Examinations Board (NEB)</span> to ensure accuracy and compliance.

@@ -38,6 +38,12 @@ interface DataContextType {
     schoolPageVisibility: SchoolPageVisibility;
     // Add academic years
     academicYears: any[];
+    // Add application settings
+    appSettings: {
+        appName: string;
+        academicYear: string;
+        appLogo: string;
+    };
     // Loading state
     isDataLoading: boolean;
     // Add these new properties for refresh triggers
@@ -53,6 +59,11 @@ interface DataContextType {
     setGrades: React.Dispatch<React.SetStateAction<GradesMap>>;
     setSchoolPageVisibility: React.Dispatch<React.SetStateAction<SchoolPageVisibility>>;
     setAcademicYears: React.Dispatch<React.SetStateAction<any[]>>;
+    setAppSettings: React.Dispatch<React.SetStateAction<{
+        appName: string;
+        academicYear: string;
+        appLogo: string;
+    }>>;
     updateStudentMarks: (updatedMarks: MarksMap) => void;
     updateStudentGrades: (updatedGrades: GradesMap) => void;
     deleteStudentMarks: (studentId: string, academicYear: string) => Promise<void>;
@@ -76,6 +87,12 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [schoolPageVisibility, setSchoolPageVisibility] = useState<SchoolPageVisibility>({} as SchoolPageVisibility);
     // Add academic years state
     const [academicYears, setAcademicYears] = useState<any[]>([]);
+    // Add application settings state
+    const [appSettings, setAppSettings] = useState({
+        appName: 'ResultSys',
+        academicYear: '2082',
+        appLogo: ''
+    });
     // Add these new state variables for refresh triggers
     const [marksRefreshTrigger, setMarksRefreshTrigger] = useState(0);
     const [gradesRefreshTrigger, setGradesRefreshTrigger] = useState(0);
@@ -85,17 +102,30 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const loadData = async () => {
             try {
                 // Fetch data from API
-                const [schoolsData, studentsData, subjectsData, academicYearsData] = await Promise.all([
+                const [schoolsData, studentsData, subjectsData, academicYearsData, appSettingsData] = await Promise.all([
                     dataService.schools.getAll(),
                     dataService.students.getAll(),
                     dataService.subjects.getAll(),
-                    dataService.academicYears.getAll()
+                    dataService.academicYears.getAll(),
+                    dataService.applicationSettings.getAll()
                 ]);
                 
                 setSchools(schoolsData);
                 setStudents(studentsData);
                 setSubjects(subjectsData);
                 setAcademicYears(academicYearsData);
+                
+                // Process application settings
+                const settingsMap: { [key: string]: any } = {};
+                appSettingsData.forEach((setting: any) => {
+                    settingsMap[setting.key] = setting.value;
+                });
+                
+                setAppSettings({
+                    appName: settingsMap['app_name'] || 'ResultSys',
+                    academicYear: settingsMap['academic_year'] || '2082',
+                    appLogo: settingsMap['app_logo'] || ''
+                });
                 
                 // For now, we'll keep using mock data for grades and school page visibility
                 // In a real application, these would also come from the API
@@ -230,12 +260,12 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     const value = {
-        schools, students, subjects, assignments, extraCreditAssignments, marks, grades, schoolPageVisibility, academicYears,
+        schools, students, subjects, assignments, extraCreditAssignments, marks, grades, schoolPageVisibility, academicYears, appSettings,
         isDataLoading,
         // Add the refresh triggers to the context value
         marksRefreshTrigger,
         gradesRefreshTrigger,
-        setSchools, setStudents, setSubjects, setAssignments, setExtraCreditAssignments, setMarks, setGrades, setSchoolPageVisibility, setAcademicYears,
+        setSchools, setStudents, setSubjects, setAssignments, setExtraCreditAssignments, setMarks, setGrades, setSchoolPageVisibility, setAcademicYears, setAppSettings,
         updateStudentMarks,
         updateStudentGrades,
         deleteStudentMarks,

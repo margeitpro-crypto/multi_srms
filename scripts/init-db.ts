@@ -116,6 +116,7 @@ class DatabaseInitializer {
       // Drop existing tables and types in reverse order to avoid foreign key constraints
       console.log('⚠️  Dropping existing tables and types...');
       await client.query('DROP TABLE IF EXISTS application_settings CASCADE');
+      await client.query('DROP TABLE IF EXISTS academic_years CASCADE');
       await client.query('DROP TABLE IF EXISTS student_marks CASCADE');
       await client.query('DROP TABLE IF EXISTS extra_credit_assignments CASCADE');
       await client.query('DROP TABLE IF EXISTS student_subject_assignments CASCADE');
@@ -139,6 +140,9 @@ class DatabaseInitializer {
       
       // Add default academic years
       await this.addDefaultAcademicYears(client);
+      
+      // Add default application settings
+      await this.addDefaultAppSettings(client);
       
       await client.end();
       return true;
@@ -199,6 +203,32 @@ class DatabaseInitializer {
       console.log('✓ Default academic years added successfully');
     } catch (error) {
       console.error('✗ Error adding default academic years:', (error as Error).message);
+    }
+  }
+
+  /**
+   * Add default application settings
+   */
+  private async addDefaultAppSettings(client: Client): Promise<void> {
+    try {
+      // Insert default application settings
+      const defaultSettings = [
+        { key: 'app_name', value: '"ResultSys"', description: 'Application name displayed in the UI' },
+        { key: 'academic_year', value: '"2082"', description: 'Current academic year for the application' }
+      ];
+      
+      for (const setting of defaultSettings) {
+        await client.query(
+          `INSERT INTO application_settings (key, value, description) 
+           VALUES ($1, $2, $3) 
+           ON CONFLICT (key) DO UPDATE SET value = $2, description = $3, updated_at = NOW()`,
+          [setting.key, setting.value, setting.description]
+        );
+      }
+      
+      console.log('✓ Default application settings added successfully');
+    } catch (error) {
+      console.error('✗ Error adding default application settings:', (error as Error).message);
     }
   }
 

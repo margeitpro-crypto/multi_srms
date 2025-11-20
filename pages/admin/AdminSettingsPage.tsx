@@ -16,23 +16,96 @@ import { ComputerDesktopIcon } from '../../components/icons/ComputerDesktopIcon'
 import Loader from '../../components/Loader';
 import { SchoolPageVisibility, PagePermission } from '../../types';
 import YearSetup from '../../components/YearSetup';
+import dataService from '../../services/dataService';
 
 const GeneralSettings = () => {
     const { addToast } = useAppContext();
-    const handleSubmit = (e: React.FormEvent) => {
+    const { appSettings, setAppSettings } = useData();
+    const [appName, setAppName] = useState(appSettings.appName);
+    const [academicYear, setAcademicYear] = useState(appSettings.academicYear);
+    const [isLoading, setIsLoading] = useState(true);
+
+    // Load settings when component mounts
+    useEffect(() => {
+        const loadSettings = async () => {
+            try {
+                setIsLoading(true);
+                // Load application name
+                try {
+                    const appNameSetting = await dataService.applicationSettings.getByKey('app_name');
+                    if (appNameSetting && appNameSetting.value) {
+                        setAppName(appNameSetting.value);
+                    }
+                } catch (error) {
+                    console.log('App name setting not found, using default');
+                }
+                
+                // Load academic year
+                try {
+                    const academicYearSetting = await dataService.applicationSettings.getByKey('academic_year');
+                    if (academicYearSetting && academicYearSetting.value) {
+                        setAcademicYear(academicYearSetting.value);
+                    }
+                } catch (error) {
+                    console.log('Academic year setting not found, using default');
+                }
+            } catch (error) {
+                console.error('Error loading settings:', error);
+                addToast("Error loading settings. Using default values.", "error");
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadSettings();
+    }, [addToast]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        addToast("General settings saved successfully!", "success");
+        try {
+            // Save both settings
+            await dataService.applicationSettings.saveSettings({
+                'app_name': appName,
+                'academic_year': academicYear
+            });
+            
+            // Update the appSettings in DataContext
+            setAppSettings(prev => ({
+                ...prev,
+                appName: appName,
+                academicYear: academicYear
+            }));
+            
+            addToast("General settings saved successfully!", "success");
+        } catch (error) {
+            console.error('Error saving settings:', error);
+            addToast("Error saving settings. Please try again.", "error");
+        }
     };
 
+    if (isLoading) {
+        return <Loader />;
+    }
+
     return (
-        <div className="space-y-6">
-            <InputField id="appName" label="Application Name" defaultValue="ResultSys" />
-            <InputField id="academicYear" label="Current Academic Year" defaultValue="2082" />
+        <form onSubmit={handleSubmit} className="space-y-6">
+            <InputField 
+                id="appName" 
+                label="Application Name" 
+                value={appName} 
+                onChange={(e) => setAppName(e.target.value)} 
+            />
+            <InputField 
+                id="academicYear" 
+                label="Current Academic Year" 
+                value={academicYear} 
+                onChange={(e) => setAcademicYear(e.target.value)} 
+            />
             <InputField id="appLogo" label="Application Logo" type="file" />
             <div className="flex justify-end">
-                <Button onClick={handleSubmit}>Save Changes</Button>
+                <Button type="submit">Save Changes</Button>
             </div>
-        </div>
+        </form>
     );
 };
 

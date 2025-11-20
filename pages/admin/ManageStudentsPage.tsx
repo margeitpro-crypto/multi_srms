@@ -1,25 +1,25 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Table from '../../components/Table';
-import Button from '../../components/Button';
-import Modal from '../../components/Modal';
-import InputField from '../../components/InputField';
-import Select from '../../components/Select';
-import Pagination from '../../components/Pagination';
-import { Student, School } from '../../types';
+import { useData } from '../../context/DataContext';
 import { useAppContext } from '../../context/AppContext';
+import { studentsApi } from '../../services/dataService';
+import { School, Student } from '../../types';
+import Button from '../../components/Button';
+import Select from '../../components/Select';
+import InputField from '../../components/InputField';
+import Table from '../../components/Table';
+import ConfirmModal from '../../components/ConfirmModal';
+import StudentForm from '../../components/forms/StudentForm';
+import CSVUploadModal from '../../components/CSVUploadModal';
+import Loader from '../../components/Loader';
+import Pagination from '../../components/Pagination';
 import IconButton from '../../components/IconButton';
+import Modal from '../../components/Modal';
 import { UserCircleIcon } from '../../components/icons/UserCircleIcon';
 import { PencilIcon } from '../../components/icons/PencilIcon';
 import { TrashIcon } from '../../components/icons/TrashIcon';
-import { usePageTitle } from '../../context/PageTitleContext';
 import { DocumentArrowUpIcon } from '../../components/icons/DocumentArrowUpIcon';
-import CSVUploadModal from '../../components/CSVUploadModal';
-// FIX: Use central data context instead of useMockData and local mock data.
-import { useData } from '../../context/DataContext';
-import StudentForm from '../../components/forms/StudentForm';
-import ConfirmModal from '../../components/ConfirmModal';
-import { studentsApi } from '../../services/dataService';
+import { usePageTitle } from '../../context/PageTitleContext';
 
 const ManageStudentsPage: React.FC = () => {
   const { setPageTitle } = usePageTitle();
@@ -28,7 +28,7 @@ const ManageStudentsPage: React.FC = () => {
     setPageTitle('Manage Students');
   }, [setPageTitle]);
 
-  const { students: allStudents, setStudents: setAllStudents, schools, isDataLoading: isLoading, academicYears } = useData();
+  const { students: allStudents, setStudents: setAllStudents, schools, isDataLoading: isLoading, academicYears, appSettings } = useData();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -37,7 +37,7 @@ const ManageStudentsPage: React.FC = () => {
   const { addToast } = useAppContext();
   
   const [selectedSchoolId, setSelectedSchoolId] = useState<string>('');
-  const [selectedYear, setSelectedYear] = useState<string>('2082');
+  const [selectedYear, setSelectedYear] = useState<string>(appSettings.academicYear);
   const [selectedClass, setSelectedClass] = useState<string>('11');
   const [showStudents, setShowStudents] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,6 +45,11 @@ const ManageStudentsPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
   const PLAN_LIMITS = { Basic: 500, Pro: 2000, Enterprise: Infinity };
+
+  // Update selectedYear when appSettings.academicYear changes
+  useEffect(() => {
+    setSelectedYear(appSettings.academicYear);
+  }, [appSettings.academicYear]);
 
   const handleAdd = () => {
     setSelectedStudent(null);

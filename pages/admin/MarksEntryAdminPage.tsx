@@ -35,10 +35,10 @@ const MarksEntryAdminPage: React.FC = () => {
 
     const { addToast } = useAppContext();
     // FIX: Get global marks state and setter from DataContext
-    const { schools, students: MOCK_ADMIN_STUDENTS, subjects: MOCK_SUBJECTS, assignments: MOCK_STUDENT_SUBJECT_ASSIGNMENTS, marks: allMarks, updateStudentMarks, extraCreditAssignments, setAssignments, setExtraCreditAssignments, updateStudentGrades, academicYears } = useData();
+    const { schools, students: MOCK_ADMIN_STUDENTS, subjects: MOCK_SUBJECTS, assignments: MOCK_STUDENT_SUBJECT_ASSIGNMENTS, marks: allMarks, updateStudentMarks, extraCreditAssignments, setAssignments, setExtraCreditAssignments, updateStudentGrades, academicYears, appSettings } = useData();
 
     const [selectedSchoolId, setSelectedSchoolId] = useState<string>('');
-    const [selectedYear, setSelectedYear] = useState('2082');
+    const [selectedYear, setSelectedYear] = useState(appSettings.academicYear);
     const [selectedClass, setSelectedClass] = useState('11');
     const [isLoading, setIsLoading] = useState(false);
     const [dataLoaded, setDataLoaded] = useState(false);
@@ -48,6 +48,11 @@ const MarksEntryAdminPage: React.FC = () => {
     const [marks, setMarks] = useState<MarksState>({});
     
     const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
+
+    // Update selectedYear when appSettings.academicYear changes
+    useEffect(() => {
+        setSelectedYear(appSettings.academicYear);
+    }, [appSettings.academicYear]);
 
     const selectedSchool = useMemo(() => schools.find(s => s.id.toString() === selectedSchoolId), [selectedSchoolId, schools]);
 
