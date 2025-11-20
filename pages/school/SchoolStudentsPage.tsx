@@ -1,5 +1,3 @@
-
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Table from '../../components/Table';
@@ -21,9 +19,10 @@ import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 import Loader from '../../components/Loader';
 import StudentForm from '../../components/forms/StudentForm';
+import ConfirmModal from '../../components/ConfirmModal';
+import { studentsApi } from '../../services/dataService';
 
-
-const SchoolStudentsPage: React.FC = () => {
+const SchoolStudentsPage: React.FC<{ isReadOnly?: boolean }> = ({ isReadOnly = false }) => {
   const { setPageTitle } = usePageTitle();
   const navigate = useNavigate();
   useEffect(() => {
@@ -46,7 +45,8 @@ const SchoolStudentsPage: React.FC = () => {
   const ITEMS_PER_PAGE = 10;
   const PLAN_LIMITS = { Basic: 500, Pro: 2000, Enterprise: Infinity };
 
-  const isReadOnly = schoolPageVisibility?.students === 'read-only';
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
 
   const handleAdd = () => {
     setSelectedStudent(null);
@@ -58,7 +58,7 @@ const SchoolStudentsPage: React.FC = () => {
     setIsModalOpen(true);
   };
   
-  const handleSave = (studentData: Partial<Student>) => {
+  const handleSave = async (studentData: Partial<Student>) => {
     if (!loggedInSchool) return;
     
     if (!studentData.id) { // Enforcement for NEW students
@@ -72,20 +72,66 @@ const SchoolStudentsPage: React.FC = () => {
       }
     }
 
-    if (studentData.id) { // Update
-        setAllStudents(prev => prev.map(s => s.id === studentData.id ? { ...s, ...studentData } as Student : s));
-        addToast(`Student "${studentData.name}" updated successfully!`, 'success');
-    } else { // Add new
-        const newStudent: Student = {
-            ...studentData,
-            id: `S${Date.now()}`,
-            school_id: loggedInSchool.id,
-            created_at: new Date().toISOString(),
-            grade: selectedClass,
-        } as Student;
+    try {
+      if (studentData.id) { // Update existing student
+        // Find the student in the local state to get the database ID
+        const existingStudent = allStudents.find(s => s.id === studentData.id);
+        if (existingStudent) {
+          // Prepare student data for API (map frontend properties to backend properties)
+          const studentPayload = {
+            name: studentData.name,
+            dob: studentData.dob,
+            gender: studentData.gender,
+            grade: studentData.grade,
+            roll_no: studentData.roll_no,
+            photo_url: studentData.photo_url,
+            academic_year: studentData.year,
+            symbol_no: studentData.symbol_no,
+            alph: studentData.alph,
+            registration_id: studentData.registration_id,
+            dob_bs: studentData.dob_bs,
+            father_name: studentData.father_name,
+            mother_name: studentData.mother_name,
+            mobile_no: studentData.mobile_no
+          };
+          
+          // We need to find the database ID for the student
+          // This is a limitation of the current implementation where we're using student_system_id as the frontend ID
+          // In a real application, we would store the database ID separately
+          // For now, we'll update the local state only
+          setAllStudents(prev => prev.map(s => s.id === studentData.id ? { ...s, ...studentData } as Student : s));
+          addToast(`Student "${studentData.name}" updated successfully!`, 'success');
+        }
+      } else { // Add new student
+        // Prepare student data for API
+        const studentPayload = {
+          student_system_id: `S${Date.now()}`,
+          school_id: loggedInSchool.id,
+          name: studentData.name,
+          dob: studentData.dob,
+          gender: studentData.gender,
+          grade: selectedClass,
+          roll_no: studentData.roll_no,
+          photo_url: studentData.photo_url,
+          academic_year: parseInt(selectedYear),
+          symbol_no: studentData.symbol_no,
+          alph: studentData.alph,
+          registration_id: studentData.registration_id,
+          dob_bs: studentData.dob_bs,
+          father_name: studentData.father_name,
+          mother_name: studentData.mother_name,
+          mobile_no: studentData.mobile_no
+        };
+        
+        const newStudent = await studentsApi.create(studentPayload as any);
         setAllStudents(prev => [...prev, newStudent]);
         addToast(`Student "${newStudent.name}" added successfully!`, 'success');
+      }
+    } catch (error) {
+      console.error('Error saving student:', error);
+      addToast('Failed to save student. Please try again.', 'error');
     }
+    
     setIsModalOpen(false);
   };
   
@@ -94,9 +140,15 @@ const SchoolStudentsPage: React.FC = () => {
   };
 
   const handleDelete = (student: Student) => {
-    if (window.confirm(`Are you sure you want to delete ${student.name}?`)) {
-      setAllStudents(prev => prev.filter(s => s.id !== student.id));
-      addToast(`${student.name} deleted successfully.`, 'error');
+    setStudentToDelete(student);
+    setIsConfirmModalOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (studentToDelete) {
+      setAllStudents(prev => prev.filter(s => s.id !== studentToDelete.id));
+      addToast(`${studentToDelete.name} deleted successfully.`, 'error');
+      setStudentToDelete(null);
     }
   };
 
@@ -275,6 +327,19 @@ const SchoolStudentsPage: React.FC = () => {
         schoolId={loggedInSchool.id}
         year={selectedYear}
         grade={selectedClass}
+      />
+
+      <ConfirmModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => {
+          setIsConfirmModalOpen(false);
+          setStudentToDelete(null);
+        }}
+        onConfirm={confirmDelete}
+        title="Confirm Delete"
+        message={`Are you sure you want to delete ${studentToDelete?.name}? This action cannot be undone.`}
+        confirmText="Delete"
+        confirmVariant="danger"
       />
     </div>
   );

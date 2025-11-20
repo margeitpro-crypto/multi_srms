@@ -15,6 +15,7 @@ import { usePageTitle } from '../../context/PageTitleContext';
 import { useData } from '../../context/DataContext';
 import { schoolsApi, usersApi } from '../../services/dataService';
 import api from '../../services/api';
+import ConfirmModal from '../../components/ConfirmModal';
 
 const SchoolForm: React.FC<{ school: Partial<School> | null, onSave: (school: School) => void, onClose: () => void }> = ({ school, onSave, onClose }) => {
   const [formData, setFormData] = useState<Partial<School>>({
@@ -149,6 +150,8 @@ const ManageSchoolsPage: React.FC = () => {
     return filteredSchools.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [filteredSchools, currentPage]);
 
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [schoolToDelete, setSchoolToDelete] = useState<School | null>(null);
 
   const handleAdd = () => {
     setSelectedSchool({});
@@ -229,11 +232,16 @@ const ManageSchoolsPage: React.FC = () => {
   };
 
   const handleDelete = async (school: School) => {
-    if(window.confirm(`Are you sure you want to delete ${school.name}?`)){
+    setSchoolToDelete(school);
+    setIsConfirmModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (schoolToDelete) {
       try {
-        await schoolsApi.delete(school.id);
-        setSchools(schools.filter(s => s.id !== school.id));
-        addToast(`${school.name} deleted successfully.`, 'success');
+        await schoolsApi.delete(schoolToDelete.id);
+        setSchools(schools.filter(s => s.id !== schoolToDelete.id));
+        addToast(`${schoolToDelete.name} deleted successfully.`, 'success');
       } catch (error: any) {
         console.error('Error deleting school:', error);
         let errorMessage = 'Failed to delete school';
@@ -242,6 +250,7 @@ const ManageSchoolsPage: React.FC = () => {
         }
         addToast(errorMessage, 'error');
       }
+      setSchoolToDelete(null);
     }
   };
 
@@ -363,6 +372,19 @@ const ManageSchoolsPage: React.FC = () => {
           </div>
         )}
       </Modal>
+
+      <ConfirmModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => {
+          setIsConfirmModalOpen(false);
+          setSchoolToDelete(null);
+        }}
+        onConfirm={confirmDelete}
+        title="Confirm Delete"
+        message={`Are you sure you want to delete ${schoolToDelete?.name}? This action cannot be undone.`}
+        confirmText="Delete"
+        confirmVariant="danger"
+      />
     </div>
   );
 };

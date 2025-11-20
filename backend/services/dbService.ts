@@ -248,6 +248,13 @@ export const studentsService = {
     }));
   },
   
+  // Get student database ID by student system ID
+  async getStudentDatabaseIdBySystemId(studentSystemId: string) {
+    const result = await query('SELECT id FROM students WHERE student_system_id = $1', [studentSystemId]);
+    if (!result.rows[0]) return null;
+    return result.rows[0].id;
+  },
+
   // Get student by ID
   async getStudentById(id: number) {
     const result = await query('SELECT * FROM students WHERE id = $1', [id]);
@@ -290,6 +297,48 @@ export const studentsService = {
         studentData.dob_bs, studentData.father_name, studentData.mother_name, studentData.mobile_no
       ]
     );
+    
+    const student = result.rows[0];
+    return {
+      id: student.student_system_id, // Using student_system_id as the frontend id
+      school_id: student.school_id,
+      name: student.name,
+      dob: student.dob,
+      gender: student.gender,
+      grade: student.grade,
+      roll_no: student.roll_no,
+      photo_url: student.photo_url,
+      created_at: student.created_at,
+      year: student.academic_year,
+      symbol_no: student.symbol_no,
+      alph: student.alph,
+      registration_id: student.registration_id,
+      dob_bs: student.dob_bs,
+      father_name: student.father_name,
+      mother_name: student.mother_name,
+      mobile_no: student.mobile_no
+    };
+  },
+  
+  // Update a student
+  async updateStudent(id: number, studentData: any) {
+    const result = await query(
+      `UPDATE students SET 
+        name = $1, dob = $2, gender = $3, grade = $4, roll_no = $5, photo_url = $6,
+        academic_year = $7, symbol_no = $8, alph = $9, registration_id = $10, dob_bs = $11,
+        father_name = $12, mother_name = $13, mobile_no = $14
+       WHERE id = $15 RETURNING *`,
+      [
+        studentData.name, studentData.dob, studentData.gender, studentData.grade, studentData.roll_no,
+        studentData.photo_url, studentData.academic_year, studentData.symbol_no, studentData.alph,
+        studentData.registration_id, studentData.dob_bs, studentData.father_name, studentData.mother_name,
+        studentData.mobile_no, id
+      ]
+    );
+    
+    if (result.rows.length === 0) {
+      return null;
+    }
     
     const student = result.rows[0];
     return {
@@ -396,9 +445,152 @@ export const subjectsService = {
   }
 };
 
+// Subject assignments service
+export const subjectAssignmentsService = {
+  // Get all subject assignments for a student in a specific academic year
+  async getStudentAssignments(studentId: number, academicYear: number) {
+    const result = await query(
+      'SELECT subject_id FROM student_subject_assignments WHERE student_id = $1 AND academic_year = $2',
+      [studentId, academicYear]
+    );
+    return result.rows.map(row => row.subject_id);
+  },
+  
+  // Get extra credit assignment for a student in a specific academic year
+  async getStudentExtraCreditAssignment(studentId: number, academicYear: number) {
+    const result = await query(
+      'SELECT subject_id FROM extra_credit_assignments WHERE student_id = $1 AND academic_year = $2',
+      [studentId, academicYear]
+    );
+    return result.rows.length > 0 ? result.rows[0].subject_id : null;
+  },
+  
+  // Assign subjects to a student for a specific academic year
+  async assignSubjectsToStudent(studentId: number, subjectIds: number[], academicYear: number) {
+    // First, remove all existing assignments for this student and year
+    await query(
+      'DELETE FROM student_subject_assignments WHERE student_id = $1 AND academic_year = $2',
+      [studentId, academicYear]
+    );
+    
+    // Then, insert the new assignments
+    if (subjectIds.length > 0) {
+      const values = subjectIds.map((subjectId, index) => 
+        `($1, $${index + 3}, $2)`
+      ).join(', ');
+      
+      const params = [studentId, academicYear, ...subjectIds];
+      await query(
+        `INSERT INTO student_subject_assignments (student_id, subject_id, academic_year) VALUES ${values}`,
+        params
+      );
+    }
+    
+    return subjectIds;
+  },
+  
+  // Assign extra credit subject to a student for a specific academic year
+  async assignExtraCreditSubjectToStudent(studentId: number, subjectId: number | null, academicYear: number) {
+    // First, remove any existing extra credit assignment for this student and year
+    await query(
+      'DELETE FROM extra_credit_assignments WHERE student_id = $1 AND academic_year = $2',
+      [studentId, academicYear]
+    );
+    
+    // Then, insert the new assignment if subjectId is provided
+    if (subjectId !== null) {
+      await query(
+        'INSERT INTO extra_credit_assignments (student_id, subject_id, academic_year) VALUES ($1, $2, $3)',
+        [studentId, subjectId, academicYear]
+      );
+    }
+    
+    return subjectId;
+  },
+  
+  // Get student database ID by student system ID
+  async getStudentDatabaseIdBySystemId(studentSystemId: string) {
+    const result = await query('SELECT id FROM students WHERE student_system_id = $1', [studentSystemId]);
+    if (!result.rows[0]) return null;
+    return result.rows[0].id;
+  }
+};
+
+// Marks service
+export const marksService = {
+  // Get all marks for a student in a specific academic year
+  async getStudentMarks(studentId: number, academicYear: number) {
+    const result = await query(
+      `SELECT subject_id, theory_obtained, practical_obtained, is_absent 
+       FROM student_marks 
+       WHERE student_id = $1 AND academic_year = $2`,
+      [studentId, academicYear]
+    );
+    
+    const marks: { [subjectId: number]: { theory: number; practical: number; isAbsent: boolean } } = {};
+    result.rows.forEach(row => {
+      marks[row.subject_id] = {
+        theory: parseFloat(row.theory_obtained) || 0,
+        practical: parseFloat(row.practical_obtained) || 0,
+        isAbsent: row.is_absent || false
+      };
+    });
+    
+    return marks;
+  },
+  
+  // Save marks for a student in a specific academic year
+  async saveStudentMarks(studentId: number, academicYear: number, marks: { [subjectId: number]: { theory: number; practical: number; isAbsent: boolean } }) {
+    // First, delete existing marks for this student and year
+    await query(
+      'DELETE FROM student_marks WHERE student_id = $1 AND academic_year = $2',
+      [studentId, academicYear]
+    );
+    
+    // Then, insert the new marks
+    const subjectIds = Object.keys(marks).map(Number);
+    if (subjectIds.length > 0) {
+      // Build the values string and parameters correctly
+      const valuesParts: string[] = [];
+      const params: any[] = [studentId, academicYear];
+      
+      subjectIds.forEach((subjectId, index) => {
+        const mark = marks[subjectId];
+        // Add subject_id, theory_obtained, practical_obtained, is_absent
+        valuesParts.push(`($1, $${index * 4 + 3}, $2, $${index * 4 + 4}, $${index * 4 + 5}, $${index * 4 + 6})`);
+        params.push(
+          subjectId,
+          mark.theory || 0,
+          mark.practical || 0,
+          mark.isAbsent || false
+        );
+      });
+      
+      const values = valuesParts.join(', ');
+      
+      await query(
+        `INSERT INTO student_marks (student_id, subject_id, academic_year, theory_obtained, practical_obtained, is_absent) 
+         VALUES ${values}`,
+        params
+      );
+    }
+    
+    return marks;
+  },
+  
+  // Get student database ID by student system ID
+  async getStudentDatabaseIdBySystemId(studentSystemId: string) {
+    const result = await query('SELECT id FROM students WHERE student_system_id = $1', [studentSystemId]);
+    if (!result.rows[0]) return null;
+    return result.rows[0].id;
+  }
+};
+
 export default {
   query,
   schoolsService,
   studentsService,
-  subjectsService
+  subjectsService,
+  subjectAssignmentsService,
+  marksService
 };

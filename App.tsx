@@ -139,7 +139,11 @@ function AppContent() {
         <Route path="settings" element={<SchoolSettingsPage />} />
       </Route>
       
-      <Route path="student/:studentId" element={<StudentProfilePage />} />
+      <Route path="student/:studentId" element={
+        <PageTitleProvider>
+          <StudentProfilePage />
+        </PageTitleProvider>
+      } />
       
        {/* Catch all unhandled routes */}
        <Route path="*" element={<Navigate to="/" replace />} />

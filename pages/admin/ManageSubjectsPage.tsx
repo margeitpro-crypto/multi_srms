@@ -15,6 +15,8 @@ import { useData } from '../../context/DataContext';
 import SubjectCSVUploadModal from '../../components/SubjectCSVUploadModal';
 import { DocumentArrowUpIcon } from '../../components/icons/DocumentArrowUpIcon';
 import Select from '../../components/Select';
+import ConfirmModal from '../../components/ConfirmModal';
+import { subjectsApi } from '../../services/dataService';
 
 const SubjectForm: React.FC<{ subject: Partial<Subject> | null, onSave: (subjectData: Subject) => void, onClose: () => void }> = ({ subject, onSave, onClose }) => {
     const [formData, setFormData] = useState({
@@ -48,7 +50,7 @@ const SubjectForm: React.FC<{ subject: Partial<Subject> | null, onSave: (subject
         }
     };
     
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const finalData: Subject = {
             id: subject?.id || 0, // ID will be set in parent component for new subjects
@@ -67,7 +69,21 @@ const SubjectForm: React.FC<{ subject: Partial<Subject> | null, onSave: (subject
                 passMarks: parseInt(String(formData.internal.passMarks), 10),
             }
         };
-        onSave(finalData);
+        
+        // If this is a new subject, create it through the API
+        if (!subject?.id) {
+            try {
+                const createdSubject = await subjectsApi.create(finalData);
+                onSave(createdSubject);
+            } catch (error) {
+                console.error('Error creating subject:', error);
+                // Show error message to user
+                alert('Failed to create subject. Please try again.');
+            }
+        } else {
+            // For existing subjects, just update the local state
+            onSave(finalData);
+        }
     };
 
   return (
@@ -150,33 +166,49 @@ const ManageSubjectsPage: React.FC<{ isReadOnly?: boolean }> = ({ isReadOnly = f
   };
 
   const handleSave = (subjectData: Subject) => {
-    if (subjectData.id) { // Update
+    if (subjectData.id) { // Update existing subject
         setSubjects(prev => prev.map(s => s.id === subjectData.id ? subjectData : s));
         addToast(`Subject "${subjectData.name}" updated successfully!`, 'success');
-    } else { // Add
-        const highestId = Math.max(0, ...allSubjects.map(s => s.id));
-        const newSubject = { ...subjectData, id: highestId + 1 };
-        setSubjects(prev => [...prev, newSubject]);
+    } else { // Add new subject (already created via API in SubjectForm)
+        setSubjects(prev => [...prev, subjectData]);
         addToast(`Subject "${subjectData.name}" added successfully!`, 'success');
     }
     setIsModalOpen(false);
   };
   
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [subjectToDelete, setSubjectToDelete] = useState<Subject | null>(null);
+
   const handleDelete = (subject: Subject) => {
-    if(window.confirm(`Are you sure you want to delete ${subject.name}?`)){
-      setSubjects(prev => prev.filter(s => s.id !== subject.id));
-      addToast(`${subject.name} deleted successfully.`, 'error');
+    setSubjectToDelete(subject);
+    setIsConfirmModalOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (subjectToDelete) {
+      setSubjects(prev => prev.filter(s => s.id !== subjectToDelete.id));
+      addToast(`${subjectToDelete.name} deleted successfully.`, 'error');
+      setSubjectToDelete(null);
     }
   };
 
-  const handleUploadSuccess = (newSubjects: Omit<Subject, 'id'>[]) => {
-    const highestId = Math.max(0, ...allSubjects.map(s => s.id));
-    const subjectsWithIds: Subject[] = newSubjects.map((sub, index) => ({
-        ...sub,
-        id: highestId + 1 + index,
-    }));
-    setSubjects(prev => [...prev, ...subjectsWithIds]);
-    addToast(`${newSubjects.length} subjects uploaded successfully!`, 'success');
+  const handleUploadSuccess = async (newSubjects: Omit<Subject, 'id'>[]) => {
+    try {
+      const createdSubjects: Subject[] = [];
+      
+      // Create each subject through the API
+      for (const subject of newSubjects) {
+        const createdSubject = await subjectsApi.create(subject);
+        createdSubjects.push(createdSubject);
+      }
+      
+      // Update local state with the newly created subjects
+      setSubjects(prev => [...prev, ...createdSubjects]);
+      addToast(`${newSubjects.length} subjects uploaded and saved successfully!`, 'success');
+    } catch (error) {
+      console.error('Error uploading subjects:', error);
+      addToast('Failed to upload subjects. Please try again.', 'error');
+    }
   };
 
   return (
@@ -265,6 +297,18 @@ const ManageSubjectsPage: React.FC<{ isReadOnly?: boolean }> = ({ isReadOnly = f
         <SubjectForm subject={selectedSubject} onSave={handleSave} onClose={() => setIsModalOpen(false)} />
       </Modal>
       <SubjectCSVUploadModal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} onUploadSuccess={handleUploadSuccess} />
+      <ConfirmModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => {
+          setIsConfirmModalOpen(false);
+          setSubjectToDelete(null);
+        }}
+        onConfirm={confirmDelete}
+        title="Confirm Delete"
+        message={`Are you sure you want to delete ${subjectToDelete?.name}? This action cannot be undone.`}
+        confirmText="Delete"
+        confirmVariant="danger"
+      />
     </div>
   );
 };

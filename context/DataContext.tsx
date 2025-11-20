@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { School, Student, Subject, SchoolPageVisibility } from '../types';
-import { MOCK_ASSIGNMENTS_INITIAL, MOCK_MARKS_INITIAL, MOCK_GRADES_INITIAL, MOCK_EXTRA_CREDIT_ASSIGNMENTS_INITIAL, MOCK_SCHOOL_PAGE_VISIBILITY_INITIAL } from '../data/initialData';
+import { MOCK_MARKS_INITIAL, MOCK_GRADES_INITIAL, MOCK_SCHOOL_PAGE_VISIBILITY_INITIAL } from '../data/initialData';
 import { useAppContext } from './AppContext';
 import { calculateGradesForStudents } from '../utils/gradeCalculator';
 import dataService from '../services/dataService';
@@ -81,13 +81,15 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 setStudents(studentsData);
                 setSubjects(subjectsData);
                 
-                // For now, we'll keep using mock data for assignments, marks, etc.
+                // For now, we'll keep using mock data for grades and school page visibility
                 // In a real application, these would also come from the API
-                setAssignments(MOCK_ASSIGNMENTS_INITIAL);
-                setExtraCreditAssignments(MOCK_EXTRA_CREDIT_ASSIGNMENTS_INITIAL);
-                setMarks(MOCK_MARKS_INITIAL);
                 setGrades(MOCK_GRADES_INITIAL);
                 setSchoolPageVisibility(MOCK_SCHOOL_PAGE_VISIBILITY_INITIAL);
+                
+                // Initialize assignments and marks as empty objects, they will be loaded on demand
+                setAssignments({});
+                setExtraCreditAssignments({});
+                setMarks({});
             } catch (error) {
                 console.error('Error loading data:', error);
                 addToast('Failed to load data from the server. Please check your connection and try again.', 'error');
@@ -105,26 +107,65 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     useEffect(() => { if (!isDataLoading) console.log('Schools updated:', schools); }, [schools, isDataLoading]);
     useEffect(() => { if (!isDataLoading) console.log('Students updated:', students); }, [students, isDataLoading]);
     useEffect(() => { if (!isDataLoading) console.log('Subjects updated:', subjects); }, [subjects, isDataLoading]);
-    useEffect(() => { if (!isDataLoading) console.log('Assignments updated:', assignments); }, [assignments, isDataLoading]);
-    useEffect(() => { if (!isDataLoading) console.log('Extra credit assignments updated:', extraCreditAssignments); }, [extraCreditAssignments, isDataLoading]);
-    useEffect(() => { if (!isDataLoading) console.log('Marks updated:', marks); }, [marks, isDataLoading]);
     useEffect(() => { if (!isDataLoading) console.log('Grades updated:', grades); }, [grades, isDataLoading]);
     useEffect(() => { if (!isDataLoading) console.log('School page visibility updated:', schoolPageVisibility); }, [schoolPageVisibility, isDataLoading]);
 
-    const updateStudentMarks = (updatedMarks: MarksMap) => {
+    const updateStudentMarks = async (updatedMarks: MarksMap) => {
+        // Update local state first
         const newMarksState = { ...marks, ...updatedMarks };
         setMarks(newMarksState);
         
         const studentIdsToUpdate = Object.keys(updatedMarks);
 
-        const newGrades = calculateGradesForStudents(
-            studentIdsToUpdate,
-            newMarksState,
-            subjects,
-            assignments
-        );
+        // Save marks to the API for each student
+        try {
+            for (const studentId of studentIdsToUpdate) {
+                const student = students.find(s => s.id === studentId);
+                if (student) {
+                    // Convert marks to the format expected by the API
+                    const apiMarksFormat: { [subjectId: number]: { theory: number; practical: number; isAbsent: boolean } } = {};
+                    
+                    const studentMarks = updatedMarks[studentId];
+                    if (studentMarks) {
+                        // Handle isAbsent flag
+                        const isAbsent = studentMarks.isAbsent || false;
+                        
+                        // Handle subject marks
+                        Object.keys(studentMarks).forEach(key => {
+                            if (key !== 'isAbsent') {
+                                const subjectId = parseInt(key);
+                                const markData = studentMarks[key];
+                                if (typeof markData === 'object' && markData !== null) {
+                                    apiMarksFormat[subjectId] = {
+                                        theory: markData.theory || 0,
+                                        practical: markData.internal || 0,
+                                        isAbsent: isAbsent
+                                    };
+                                }
+                            }
+                        });
+                    }
+                    
+                    // Save to API
+                    await dataService.marks.saveMarks(studentId, student.year.toString(), apiMarksFormat);
+                }
+            }
+            
+            // Update grades after saving marks
+            const newGrades = calculateGradesForStudents(
+                studentIdsToUpdate,
+                newMarksState,
+                subjects,
+                assignments
+            );
 
-        setGrades(prevGrades => ({ ...prevGrades, ...newGrades }));
+            setGrades(prevGrades => ({ ...prevGrades, ...newGrades }));
+            
+            addToast('Marks saved successfully!', 'success');
+        } catch (error) {
+            console.error('Error saving marks to API:', error);
+            addToast('Failed to save marks to the database. Please try again.', 'error');
+        }
     };
 
     const resetData = () => {
