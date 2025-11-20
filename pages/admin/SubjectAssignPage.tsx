@@ -30,6 +30,9 @@ const SubjectAssignPage: React.FC<{ school?: School, isReadOnly?: boolean }> = (
     const [selectedExtraCreditSubjectId, setSelectedExtraCreditSubjectId] = useState<string>('');
     
     const [isLoadingAssignments, setIsLoadingAssignments] = useState<boolean>(false);
+    
+    // Add search state for available subjects
+    const [searchTerm, setSearchTerm] = useState<string>('');
 
     // Update selectedYear when appSettings.academicYear changes
     useEffect(() => {
@@ -186,16 +189,40 @@ const SubjectAssignPage: React.FC<{ school?: School, isReadOnly?: boolean }> = (
         if (selectedExtraCreditSubjectId && selectedExtraCreditSubjectId !== '') {
             assignedIds.add(parseInt(selectedExtraCreditSubjectId, 10));
         }
-        return allSubjects.filter(s => !assignedIds.has(s.id));
-    }, [allSubjects, assignedSubjects, selectedExtraCreditSubjectId]);
+        
+        // Filter subjects based on search term
+        let filteredSubjects = allSubjects.filter(s => !assignedIds.has(s.id));
+        
+        if (searchTerm) {
+            const lowerSearchTerm = searchTerm.toLowerCase();
+            filteredSubjects = filteredSubjects.filter(s => 
+                s.theory.subCode.toLowerCase().includes(lowerSearchTerm) ||
+                s.name.toLowerCase().includes(lowerSearchTerm)
+            );
+        }
+        
+        return filteredSubjects;
+    }, [allSubjects, assignedSubjects, selectedExtraCreditSubjectId, searchTerm]);
     
     const availableExtraCreditSubjects = useMemo(() => {
         if (!allSubjects) return [];
         const assignedMainIds = new Set(assignedSubjects.map(s => s.id));
         // Convert empty string to null for the current extra credit subject ID
         const currentExtraId = selectedExtraCreditSubjectId && selectedExtraCreditSubjectId !== '' ? parseInt(selectedExtraCreditSubjectId, 10) : null;
-        return allSubjects.filter(s => !assignedMainIds.has(s.id) || s.id === currentExtraId);
-    }, [allSubjects, assignedSubjects, selectedExtraCreditSubjectId]);
+        
+        // Filter subjects based on search term
+        let filteredSubjects = allSubjects.filter(s => !assignedMainIds.has(s.id) || s.id === currentExtraId);
+        
+        if (searchTerm) {
+            const lowerSearchTerm = searchTerm.toLowerCase();
+            filteredSubjects = filteredSubjects.filter(s => 
+                s.theory.subCode.toLowerCase().includes(lowerSearchTerm) ||
+                s.name.toLowerCase().includes(lowerSearchTerm)
+            );
+        }
+        
+        return filteredSubjects;
+    }, [allSubjects, assignedSubjects, selectedExtraCreditSubjectId, searchTerm]);
     
     const extraCreditSubject = useMemo(() => {
         if (!selectedExtraCreditSubjectId || !allSubjects) return null;
@@ -260,11 +287,22 @@ const SubjectAssignPage: React.FC<{ school?: School, isReadOnly?: boolean }> = (
                         <>
                             <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">Subject Registration (for GPA Calculation)</h2>
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end mb-6 p-4 border dark:border-gray-700 rounded-lg">
-                               <Select id="subject-to-add" label="Available Subjects" containerClassName="md:col-span-3" value={subjectToAddId} onChange={e => setSubjectToAddId(e.target.value)} disabled={isReadOnly}>
+                               <div className="md:col-span-1">
+                                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Subjects Code</label>
+                                   <input
+                                       type="text"
+                                       placeholder="Enter subject code or name..."
+                                       value={searchTerm}
+                                       onChange={(e) => setSearchTerm(e.target.value)}
+                                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                                   />
+                               </div>
+                               
+                               <Select id="subject-to-add" label="Available Subjects" containerClassName="md:col-span-2" value={subjectToAddId} onChange={e => setSubjectToAddId(e.target.value)} disabled={isReadOnly}>
                                    <option value="">-- Select Subject to Add --</option>
                                    {availableMainSubjects.map(sub => <option key={sub.id} value={sub.id}>{sub.name}</option>)}
                                </Select>
-                                <Button onClick={handleAddSubject} className="w-full" disabled={isReadOnly}>Add Subject</Button>
+                                <Button onClick={handleAddSubject} className="w-full md:col-span-1" disabled={isReadOnly}>Add Subject</Button>
                             </div>
 
                             <div className="overflow-x-auto">

@@ -6,7 +6,6 @@ import { useAppContext } from '../../context/AppContext';
 import ToggleSwitch from '../../components/ToggleSwitch';
 import { WrenchScrewdriverIcon } from '../../components/icons/WrenchScrewdriverIcon';
 import { CalculatorIcon } from '../../components/icons/CalculatorIcon';
-import { PaintBrushIcon } from '../../components/icons/PaintBrushIcon';
 import { ShieldCheckIcon } from '../../components/icons/ShieldCheckIcon';
 import { CircleStackIcon } from '../../components/icons/CircleStackIcon';
 import { CreditCardIcon } from '../../components/icons/CreditCardIcon';
@@ -280,20 +279,6 @@ const GradingSettings = () => {
     );
 };
 
-const AppearanceSettings = () => {
-    const { theme, toggleTheme } = useTheme();
-    return (
-        <div className="space-y-6">
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Theme</h3>
-            <div className="flex items-center space-x-4">
-                <span>Light</span>
-                <ToggleSwitch label="" enabled={theme === 'dark'} onChange={toggleTheme} />
-                <span>Dark</span>
-            </div>
-        </div>
-    );
-};
-
 const SecuritySettings = () => {
     return (
         <div className="space-y-6">
@@ -514,7 +499,6 @@ const AdminSettingsPage: React.FC = () => {
         { id: 'grading', label: 'Grading', icon: <CalculatorIcon className="w-5 h-5" />, component: <GradingSettings /> },
         { id: 'year-setup', label: 'Year Setup', icon: <CircleStackIcon className="w-5 h-5" />, component: <YearSetup /> },
         { id: 'school-controller', label: 'School Page Controller', icon: <ComputerDesktopIcon className="w-5 h-5" />, component: <SchoolPageController /> },
-        { id: 'appearance', label: 'Appearance', icon: <PaintBrushIcon className="w-5 h-5" />, component: <AppearanceSettings /> },
         { id: 'security', label: 'Security', icon: <ShieldCheckIcon className="w-5 h-5" />, component: <SecuritySettings /> },
         { id: 'payment', label: 'Payment', icon: <CreditCardIcon className="w-5 h-5" />, component: <PaymentSettings /> },
         { id: 'data', label: 'Data', icon: <CircleStackIcon className="w-5 h-5" />, component: <DataManagement /> },
