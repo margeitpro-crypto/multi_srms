@@ -1,8 +1,4 @@
-
-
-
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Select from '../../components/Select';
 import Button from '../../components/Button';
 import { School, Student, Subject } from '../../types';
@@ -36,6 +32,22 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [ledgerData, setLedgerData] = useState<LedgerData | null>(null);
     
+    // Auto-load data when school, year, or class changes
+    useEffect(() => {
+        if (selectedSchoolId) {
+            handleLoad();
+        }
+    }, [selectedSchoolId, selectedYear, selectedClass]);
+    
+    // Auto-select school if only one school exists and none is selected
+    useEffect(() => {
+        if (!selectedSchoolId && schools.length === 1) {
+            setSelectedSchoolId(schools[0].id.toString());
+        } else if (school && !selectedSchoolId) {
+            setSelectedSchoolId(school.id.toString());
+        }
+    }, [schools, school, selectedSchoolId]);
+    
     const handleLoad = () => {
         if (!selectedSchoolId) return;
         setIsLoading(true);
@@ -50,8 +62,27 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                 setLedgerData({ school: currentSchool, students, subjects });
             }
             setIsLoading(false);
-        }, 1000);
+        }, 500); // Reduced delay for better UX
     };
+    
+    // Memoize the ledger data to prevent unnecessary re-renders
+    const processedLedgerData = useMemo(() => {
+        if (!ledgerData) return null;
+        
+        return {
+            ...ledgerData,
+            students: ledgerData.students.map(student => {
+                const studentGrades = allGrades[student.id];
+                const assignedSubjectIds = new Set(assignments[student.id] || []);
+                
+                return {
+                    ...student,
+                    studentGrades,
+                    assignedSubjectIds
+                };
+            })
+        };
+    }, [ledgerData, allGrades, assignments]);
 
     return (
         <div className="animate-fade-in space-y-6">
@@ -84,17 +115,17 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                         <option value="12">Grade 12</option>
                      </Select>
                      <Button onClick={handleLoad} disabled={isLoading || !selectedSchoolId} className="w-full">
-                        {isLoading ? <span className="flex items-center space-x-2"><Loader /> <span>Loading...</span></span> : 'Load'}
+                        {isLoading ? <span className="flex items-center space-x-2"><Loader /> <span>Loading...</span></span> : 'Refresh'}
                      </Button>
                 </div>
             </div>
 
-            {ledgerData ? (
+            {processedLedgerData ? (
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg animate-fade-in">
                     <div className="text-center mb-6">
-                        <img src={ledgerData.school.logoUrl} alt="School Logo" className="h-24 w-24 mx-auto mb-4 rounded-full"/>
-                        <h2 className="text-xl font-bold text-red-600">{ledgerData.school.name}</h2>
-                        <p className="text-sm font-medium text-red-600">{ledgerData.school.municipality}</p>
+                        <img src={processedLedgerData.school.logoUrl} alt="School Logo" className="h-24 w-24 mx-auto mb-4 rounded-full"/>
+                        <h2 className="text-xl font-bold text-red-600">{processedLedgerData.school.name}</h2>
+                        <p className="text-sm font-medium text-red-600">{processedLedgerData.school.municipality}</p>
                         <p className="text-sm font-medium text-red-600">GRADE {selectedClass}</p>
                     </div>
 
@@ -115,13 +146,13 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                                     <th rowSpan={2} className="border p-2 dark:border-gray-600 min-w-32">Father Name</th>
                                     <th rowSpan={2} className="border p-2 dark:border-gray-600 min-w-32">Mother Name</th>
                                     <th rowSpan={2} className="border p-2 dark:border-gray-600">Symbol Number</th>
-                                    {ledgerData.subjects.map(subject => (
+                                    {processedLedgerData.subjects.map(subject => (
                                         <th key={subject.id} colSpan={2} className="border p-2 dark:border-gray-600 text-center min-w-24">{subject.name}</th>
                                     ))}
                                     <th rowSpan={2} className="border p-2 dark:border-gray-600 text-center">Final GPA</th>
                                 </tr>
                                 <tr>
-                                    {ledgerData.subjects.map(subject => (
+                                    {processedLedgerData.subjects.map(subject => (
                                         <React.Fragment key={subject.id}>
                                             <th className="border p-2 dark:border-gray-600 text-center">IN</th>
                                             <th className="border p-2 dark:border-gray-600 text-center">TH</th>
@@ -130,22 +161,20 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {ledgerData.students.length > 0 ? ledgerData.students.map((student, index) => {
-                                    const studentGrades = allGrades[student.id];
-                                    const assignedSubjectIds = new Set(assignments[student.id] || []);
+                                {processedLedgerData.students.length > 0 ? processedLedgerData.students.map((student, index) => {
                                     return (
                                         <tr key={student.id} className="hover:bg-gray-50 dark:hover:bg-gray-600/50">
                                             <td className="border p-2 dark:border-gray-600">{index + 1}</td>
-                                            <td className="border p-2 dark:border-gray-600">{ledgerData.school.name}</td>
-                                            <td className="border p-2 dark:border-gray-600">{ledgerData.school.iemisCode}</td>
+                                            <td className="border p-2 dark:border-gray-600">{processedLedgerData.school.name}</td>
+                                            <td className="border p-2 dark:border-gray-600">{processedLedgerData.school.iemisCode}</td>
                                             <td className="border p-2 dark:border-gray-600">{student.name}</td>
                                             <td className="border p-2 dark:border-gray-600">{student.dob}</td>
                                             <td className="border p-2 dark:border-gray-600">{student.father_name}</td>
                                             <td className="border p-2 dark:border-gray-600">{student.mother_name}</td>
                                             <td className="border p-2 dark:border-gray-600">{student.symbol_no}</td>
-                                            {ledgerData.subjects.map(subject => {
-                                                const isAssigned = assignedSubjectIds.has(subject.id);
-                                                const gradeInfo = studentGrades?.subjects[subject.id];
+                                            {processedLedgerData.subjects.map(subject => {
+                                                const isAssigned = student.assignedSubjectIds.has(subject.id);
+                                                const gradeInfo = student.studentGrades?.subjects[subject.id];
                                                 return (
                                                     <React.Fragment key={subject.id}>
                                                         <td className="border p-2 dark:border-gray-600 text-center">{isAssigned ? (gradeInfo?.in || 'NG') : '-'}</td>
@@ -154,12 +183,12 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                                                 );
                                             })}
                                             <td className="border p-2 dark:border-gray-600 text-center font-bold">
-                                                {studentGrades ? (studentGrades.gpa === 0 ? 'NG' : studentGrades.gpa.toFixed(2)) : 'NG'}
+                                                {student.studentGrades ? (student.studentGrades.gpa === 0 ? 'NG' : student.studentGrades.gpa.toFixed(2)) : 'NG'}
                                             </td>
                                         </tr>
                                     );
                                 }) : (
-                                    <tr><td colSpan={8 + ledgerData.subjects.length * 2 + 1} className="text-center py-8">No students found for the selected criteria.</td></tr>
+                                    <tr><td colSpan={8 + processedLedgerData.subjects.length * 2 + 1} className="text-center py-8">No students found for the selected criteria.</td></tr>
                                 )}
                             </tbody>
                         </table>
@@ -167,7 +196,7 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                 </div>
             ) : !isLoading && (
                  <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg text-center">
-                    <p className="text-gray-500 dark:text-gray-400">Please select criteria and click 'Load' to generate the ledger.</p>
+                    <p className="text-gray-500 dark:text-gray-400">Please select criteria and click 'Refresh' to generate the ledger.</p>
                 </div>
             )}
         </div>

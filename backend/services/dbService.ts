@@ -578,6 +578,14 @@ export const marksService = {
     return marks;
   },
   
+  // Delete marks for a student in a specific academic year
+  async deleteStudentMarks(studentId: number, academicYear: number) {
+    await query(
+      'DELETE FROM student_marks WHERE student_id = $1 AND academic_year = $2',
+      [studentId, academicYear]
+    );
+  },
+  
   // Get student database ID by student system ID
   async getStudentDatabaseIdBySystemId(studentSystemId: string) {
     const result = await query('SELECT id FROM students WHERE student_system_id = $1', [studentSystemId]);

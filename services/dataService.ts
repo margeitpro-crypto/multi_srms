@@ -242,6 +242,15 @@ export const marksApi = {
       console.error(`Error saving marks for student ${studentId} in year ${academicYear}:`, error);
       throw error;
     }
+  },
+  
+  deleteMarks: async (studentId: string, academicYear: string): Promise<void> => {
+    try {
+      await api.delete(`/marks/${studentId}/${academicYear}`);
+    } catch (error) {
+      console.error(`Error deleting marks for student ${studentId} in year ${academicYear}:`, error);
+      throw error;
+    }
   }
 };
 

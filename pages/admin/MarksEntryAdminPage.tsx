@@ -1,6 +1,4 @@
-
-
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import Select from '../../components/Select';
 import Button from '../../components/Button';
 import { Subject, Student, School } from '../../types';
@@ -9,7 +7,8 @@ import { usePageTitle } from '../../context/PageTitleContext';
 import Loader from '../../components/Loader';
 // FIX: Use central data context instead of importing mock data from pages.
 import { useData } from '../../context/DataContext';
-import { getGradeInfoFromPercentage } from '../../utils/gradeCalculator';
+import { getGradeInfoFromPercentage, calculateGradesForStudents } from '../../utils/gradeCalculator';
+import dataService from '../../services/dataService';
 
 // A marks structure for this page
 interface Marks {
@@ -36,7 +35,7 @@ const MarksEntryAdminPage: React.FC = () => {
 
     const { addToast } = useAppContext();
     // FIX: Get global marks state and setter from DataContext
-    const { schools, students: MOCK_ADMIN_STUDENTS, subjects: MOCK_SUBJECTS, assignments: MOCK_STUDENT_SUBJECT_ASSIGNMENTS, marks: allMarks, updateStudentMarks, extraCreditAssignments } = useData();
+    const { schools, students: MOCK_ADMIN_STUDENTS, subjects: MOCK_SUBJECTS, assignments: MOCK_STUDENT_SUBJECT_ASSIGNMENTS, marks: allMarks, updateStudentMarks, extraCreditAssignments, setAssignments, setExtraCreditAssignments, updateStudentGrades } = useData();
 
     const [selectedSchoolId, setSelectedSchoolId] = useState<string>('');
     const [selectedYear, setSelectedYear] = useState('2082');
@@ -64,47 +63,104 @@ const MarksEntryAdminPage: React.FC = () => {
             const filteredStudents = MOCK_ADMIN_STUDENTS.filter(s => 
                 s.school_id === schoolId &&
                 s.year.toString() === selectedYear &&
-                s.grade === selectedClass && 
-                MOCK_STUDENT_SUBJECT_ASSIGNMENTS[s.id]
+                s.grade === selectedClass
+                // Removed the assignment check since we'll load assignments for all students
             );
             setStudents(filteredStudents);
 
-            const subjectIds = new Set<number>();
-            filteredStudents.forEach(student => {
-                MOCK_STUDENT_SUBJECT_ASSIGNMENTS[student.id]?.forEach(id => subjectIds.add(id));
-            });
-            const uniqueSubjects = MOCK_SUBJECTS.filter(s => subjectIds.has(s.id));
-            setHeaderSubjects(uniqueSubjects);
+            // Load assignments for all filtered students
+            const loadAssignments = async () => {
+                try {
+                    const assignmentsData: any = {};
+                    const extraCreditData: any = {};
+                    const marksData: any = {};
+                    
+                    for (const student of filteredStudents) {
+                        if (!assignmentsData[student.id]) {
+                            // Load assignments if not already loaded
+                            const assignmentData = await dataService.subjectAssignments.getAssignments(student.id, selectedYear);
+                            assignmentsData[student.id] = assignmentData.subjectIds;
+                            extraCreditData[student.id] = assignmentData.extraCreditSubjectId;
+                            
+                            // Update context with loaded assignments
+                            setAssignments(prev => ({ ...prev, [student.id]: assignmentData.subjectIds }));
+                            setExtraCreditAssignments(prev => ({ ...prev, [student.id]: assignmentData.extraCreditSubjectId }));
+                            
+                            // Load marks for this student
+                            try {
+                                const studentMarks = await dataService.marks.getMarks(student.id, selectedYear);
+                                marksData[student.id] = studentMarks;
+                            } catch (error) {
+                                console.warn(`No marks found for student ${student.id}`, error);
+                                marksData[student.id] = {};
+                            }
+                        }
+                    }
+                    
+                    // Now filter students who actually have assignments
+                    const studentsWithAssignments = filteredStudents.filter(student => 
+                        assignmentsData[student.id] && assignmentsData[student.id].length > 0
+                    );
+                    setStudents(studentsWithAssignments);
+                    
+                    const subjectIds = new Set<number>();
+                    studentsWithAssignments.forEach(student => {
+                        assignmentsData[student.id]?.forEach((id: number) => subjectIds.add(id));
+                    });
+                    const uniqueSubjects = MOCK_SUBJECTS.filter(s => subjectIds.has(s.id));
+                    setHeaderSubjects(uniqueSubjects);
+                    
+                    const initialMarks: MarksState = {};
+                    studentsWithAssignments.forEach(student => {
+                         // Initialize from loaded marks data if available, otherwise create new.
+                        initialMarks[student.id] = { isAbsent: marksData[student.id]?.isAbsent || false };
+                        
+                        // Process loaded marks for each subject
+                        Object.keys(marksData[student.id] || {}).forEach(key => {
+                            if (key !== 'isAbsent') {
+                                const subjectId = parseInt(key);
+                                const markData = marksData[student.id][key];
+                                if (typeof markData === 'object' && markData !== null) {
+                                    initialMarks[student.id][subjectId] = {
+                                        internal: markData.practical || 0,
+                                        theory: markData.theory || 0,
+                                    };
+                                }
+                            }
+                        });
+                        
+                         // Also initialize marks for extra credit subject
+                         const extraId = extraCreditData[student.id];
+                         if (extraId) {
+                             const existingExtraMarkData = marksData[student.id]?.[extraId];
+                             const existingExtraMark = typeof existingExtraMarkData === 'object' ? existingExtraMarkData : null;
+                             if (existingExtraMark) {
+                                initialMarks[student.id][extraId] = {
+                                    internal: existingExtraMark.practical || 0,
+                                    theory: existingExtraMark.theory || 0,
+                                };
+                            } else {
+                                initialMarks[student.id][extraId] = {
+                                    internal: 0,
+                                    theory: 0,
+                                };
+                            }
+                         }
+                    });
+                    setMarks(initialMarks);
+                    setSelectedStudents(new Set(studentsWithAssignments.map(s => s.id)));
+                    
+                    setIsLoading(false);
+                    setDataLoaded(true);
+                    addToast(`Loaded ${studentsWithAssignments.length} students with subject assignments for Grade ${selectedClass}.`, 'info');
+                } catch (error) {
+                    console.error('Error loading student assignments:', error);
+                    addToast('Failed to load student assignments. Please try again.', 'error');
+                    setIsLoading(false);
+                }
+            };
             
-            const initialMarks: MarksState = {};
-            filteredStudents.forEach(student => {
-                 // Initialize from global state if available, otherwise create new.
-                initialMarks[student.id] = { isAbsent: allMarks[student.id]?.isAbsent || false };
-                MOCK_STUDENT_SUBJECT_ASSIGNMENTS[student.id]?.forEach(subjectId => {
-                    const existingMarkData = allMarks[student.id]?.[subjectId.toString()];
-                    const existingMark = typeof existingMarkData === 'object' ? existingMarkData : null;
-                    initialMarks[student.id][subjectId] = {
-                        internal: existingMark?.internal || 0,
-                        theory: existingMark?.theory || 0,
-                    };
-                });
-                 // Also initialize marks for extra credit subject
-                 const extraId = extraCreditAssignments[student.id];
-                 if (extraId) {
-                     const existingExtraMarkData = allMarks[student.id]?.[extraId.toString()];
-                     const existingExtraMark = typeof existingExtraMarkData === 'object' ? existingExtraMarkData : null;
-                     initialMarks[student.id][extraId] = {
-                         internal: existingExtraMark?.internal || 0,
-                         theory: existingExtraMark?.theory || 0,
-                     };
-                 }
-            });
-            setMarks(initialMarks);
-            setSelectedStudents(new Set(filteredStudents.map(s => s.id)));
-            
-            setIsLoading(false);
-            setDataLoaded(true);
-            addToast(`Loaded ${filteredStudents.length} students for Grade ${selectedClass}.`, 'info');
+            loadAssignments();
         }, 1000);
     };
 
@@ -139,6 +195,9 @@ const MarksEntryAdminPage: React.FC = () => {
                 }
             })
         });
+        
+        // Update grades in real-time as marks change
+        updateGradesInRealTime(studentId);
     };
 
     const handleAbsenceChange = (studentId: string, isAbsent: boolean) => {
@@ -149,11 +208,66 @@ const MarksEntryAdminPage: React.FC = () => {
                 isAbsent: isAbsent,
             }
         }));
+        
+        // Update grades in real-time as absence status changes
+        updateGradesInRealTime(studentId);
     };
+    
+    const updateGradesInRealTime = useCallback((studentId: string) => {
+        // Create a temporary marks object with just the changed student's marks
+        const updatedMarks = { [studentId]: marks[studentId] };
+        
+        // Calculate new grades for this student
+        const newGrades = calculateGradesForStudents(
+            [studentId],
+            { ...allMarks, ...updatedMarks }, // Merge existing marks with updated marks
+            MOCK_SUBJECTS,
+            MOCK_STUDENT_SUBJECT_ASSIGNMENTS
+        );
+        
+        // Update grades in the DataContext
+        updateStudentGrades(newGrades);
+    }, [marks, allMarks, MOCK_SUBJECTS, MOCK_STUDENT_SUBJECT_ASSIGNMENTS, updateStudentGrades]);
     
     const handleSaveMarks = () => {
         updateStudentMarks(marks);
         addToast("Marks submitted successfully!", "success");
+    };
+    
+    const handleDeleteMarks = async () => {
+        if (!selectedSchoolId) return;
+        
+        if (window.confirm("Are you sure you want to delete all marks for the selected students? This action cannot be undone.")) {
+            try {
+                // Delete marks for all selected students
+                for (const studentId of selectedStudents) {
+                    const student = students.find(s => s.id === studentId);
+                    if (student) {
+                        await dataService.marks.deleteMarks(studentId, selectedYear);
+                    }
+                }
+                
+                // Clear marks from local state
+                const clearedMarks = { ...marks };
+                selectedStudents.forEach(studentId => {
+                    if (clearedMarks[studentId]) {
+                        Object.keys(clearedMarks[studentId]).forEach(key => {
+                            if (key !== 'isAbsent') {
+                                const subjectId = parseInt(key);
+                                clearedMarks[studentId][subjectId] = { internal: 0, theory: 0 };
+                            }
+                        });
+                        clearedMarks[studentId].isAbsent = false;
+                    }
+                });
+                
+                setMarks(clearedMarks);
+                addToast("Marks deleted successfully!", "success");
+            } catch (error) {
+                console.error('Error deleting marks:', error);
+                addToast("Failed to delete marks. Please try again.", "error");
+            }
+        }
     };
 
     const studentResults = useMemo(() => {
@@ -320,6 +434,11 @@ const MarksEntryAdminPage: React.FC = () => {
                      <div className="p-4 flex justify-end space-x-2 border-t dark:border-gray-700">
                         <Button variant="secondary">Save as Draft</Button>
                         <Button onClick={handleSaveMarks}>Submit Marks</Button>
+                        {selectedStudents.size > 0 && (
+                            <Button variant="danger" onClick={handleDeleteMarks}>
+                                Delete Marks for Selected ({selectedStudents.size})
+                            </Button>
+                        )}
                     </div>
                 </div>
             )}

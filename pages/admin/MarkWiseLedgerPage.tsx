@@ -1,8 +1,4 @@
-
-
-
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Select from '../../components/Select';
 import Button from '../../components/Button';
 import { School, Student, Subject } from '../../types';
@@ -33,6 +29,22 @@ const MarkWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [ledgerData, setLedgerData] = useState<LedgerData | null>(null);
     
+    // Auto-load data when school, year, or class changes
+    useEffect(() => {
+        if (selectedSchoolId) {
+            handleLoad();
+        }
+    }, [selectedSchoolId, selectedYear, selectedClass]);
+    
+    // Auto-select school if only one school exists and none is selected
+    useEffect(() => {
+        if (!selectedSchoolId && schools.length === 1) {
+            setSelectedSchoolId(schools[0].id.toString());
+        } else if (school && !selectedSchoolId) {
+            setSelectedSchoolId(school.id.toString());
+        }
+    }, [schools, school, selectedSchoolId]);
+    
     const handleLoad = () => {
         if (!selectedSchoolId) return;
         setIsLoading(true);
@@ -47,8 +59,34 @@ const MarkWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                 setLedgerData({ school: currentSchool, students, subjects });
             }
             setIsLoading(false);
-        }, 1000);
+        }, 500); // Reduced delay for better UX
     };
+    
+    // Memoize the ledger data to prevent unnecessary re-renders
+    const processedLedgerData = useMemo(() => {
+        if (!ledgerData) return null;
+        
+        return {
+            ...ledgerData,
+            students: ledgerData.students.map(student => {
+                const studentMarks = allMarks[student.id];
+                const assignedSubjectIds = new Set(assignments[student.id] || []);
+                const totalMarks = studentMarks ? Object.values(studentMarks).reduce((acc: number, subjectMark: any) => {
+                    if (typeof subjectMark === 'object' && subjectMark !== null && 'theory' in subjectMark) {
+                        return acc + (subjectMark.theory || 0) + (subjectMark.internal || 0);
+                    }
+                    return acc;
+                }, 0) : 0;
+                
+                return {
+                    ...student,
+                    studentMarks,
+                    assignedSubjectIds,
+                    totalMarks
+                };
+            })
+        };
+    }, [ledgerData, allMarks, assignments]);
 
     return (
         <div className="animate-fade-in space-y-6">
@@ -81,17 +119,17 @@ const MarkWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                         <option value="12">Grade 12</option>
                      </Select>
                      <Button onClick={handleLoad} disabled={isLoading || !selectedSchoolId} className="w-full">
-                        {isLoading ? <span className="flex items-center space-x-2"><Loader /> <span>Loading...</span></span> : 'Load'}
+                        {isLoading ? <span className="flex items-center space-x-2"><Loader /> <span>Loading...</span></span> : 'Refresh'}
                      </Button>
                 </div>
             </div>
 
-            {ledgerData ? (
+            {processedLedgerData ? (
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg animate-fade-in">
                     <div className="text-center mb-6">
-                        <img src={ledgerData.school.logoUrl} alt="School Logo" className="h-24 w-24 mx-auto mb-4 rounded-full"/>
-                        <h2 className="text-xl font-bold text-red-600">{ledgerData.school.name}</h2>
-                        <p className="text-sm font-medium text-red-600">{ledgerData.school.municipality}</p>
+                        <img src={processedLedgerData.school.logoUrl} alt="School Logo" className="h-24 w-24 mx-auto mb-4 rounded-full"/>
+                        <h2 className="text-xl font-bold text-red-600">{processedLedgerData.school.name}</h2>
+                        <p className="text-sm font-medium text-red-600">{processedLedgerData.school.municipality}</p>
                         <p className="text-sm font-medium text-red-600">GRADE {selectedClass}</p>
                     </div>
 
@@ -109,13 +147,13 @@ const MarkWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                                     <th rowSpan={2} className="border p-2 dark:border-gray-600">School Code</th>
                                     <th rowSpan={2} className="border p-2 dark:border-gray-600 min-w-32">Student Name</th>
                                     <th rowSpan={2} className="border p-2 dark:border-gray-600">Symbol Number</th>
-                                    {ledgerData.subjects.map(subject => (
+                                    {processedLedgerData.subjects.map(subject => (
                                         <th key={subject.id} colSpan={2} className="border p-2 dark:border-gray-600 text-center min-w-24">{subject.name}</th>
                                     ))}
                                     <th rowSpan={2} className="border p-2 dark:border-gray-600 text-center">Total of final marks</th>
                                 </tr>
                                 <tr>
-                                    {ledgerData.subjects.map(subject => (
+                                    {processedLedgerData.subjects.map(subject => (
                                         <React.Fragment key={subject.id}>
                                             <th className="border p-2 dark:border-gray-600 text-center">IN</th>
                                             <th className="border p-2 dark:border-gray-600 text-center">TH</th>
@@ -124,26 +162,17 @@ const MarkWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {ledgerData.students.length > 0 ? ledgerData.students.map((student, index) => {
-                                    const studentMarks = allMarks[student.id];
-                                    const assignedSubjectIds = new Set(assignments[student.id] || []);
-                                    const totalMarks = studentMarks ? Object.values(studentMarks).reduce((acc: number, subjectMark: any) => {
-                                        if (typeof subjectMark === 'object' && subjectMark !== null && 'theory' in subjectMark) {
-                                            return acc + (subjectMark.theory || 0) + (subjectMark.internal || 0);
-                                        }
-                                        return acc;
-                                    }, 0) : 0;
-
+                                {processedLedgerData.students.length > 0 ? processedLedgerData.students.map((student, index) => {
                                     return (
                                         <tr key={student.id} className="hover:bg-gray-50 dark:hover:bg-gray-600/50">
                                             <td className="border p-2 dark:border-gray-600">{index + 1}</td>
-                                            <td className="border p-2 dark:border-gray-600">{ledgerData.school.name}</td>
-                                            <td className="border p-2 dark:border-gray-600">{ledgerData.school.iemisCode}</td>
+                                            <td className="border p-2 dark:border-gray-600">{processedLedgerData.school.name}</td>
+                                            <td className="border p-2 dark:border-gray-600">{processedLedgerData.school.iemisCode}</td>
                                             <td className="border p-2 dark:border-gray-600">{student.name}</td>
                                             <td className="border p-2 dark:border-gray-600">{student.symbol_no}</td>
-                                            {ledgerData.subjects.map(subject => {
-                                                const isAssigned = assignedSubjectIds.has(subject.id);
-                                                const subjectMark = studentMarks?.[subject.id];
+                                            {processedLedgerData.subjects.map(subject => {
+                                                const isAssigned = student.assignedSubjectIds.has(subject.id);
+                                                const subjectMark = student.studentMarks?.[subject.id];
                                                 return (
                                                     <React.Fragment key={subject.id}>
                                                         <td className="border p-2 dark:border-gray-600 text-center">{isAssigned ? (typeof subjectMark === 'object' && subjectMark ? subjectMark.internal : 'N/A') : '-'}</td>
@@ -151,11 +180,11 @@ const MarkWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                                                     </React.Fragment>
                                                 );
                                             })}
-                                            <td className="border p-2 dark:border-gray-600 text-center font-bold">{totalMarks || '0'}</td>
+                                            <td className="border p-2 dark:border-gray-600 text-center font-bold">{student.totalMarks || '0'}</td>
                                         </tr>
                                     );
                                 }) : (
-                                    <tr><td colSpan={5 + ledgerData.subjects.length * 2 + 1} className="text-center py-8">No students found for the selected criteria.</td></tr>
+                                    <tr><td colSpan={5 + processedLedgerData.subjects.length * 2 + 1} className="text-center py-8">No students found for the selected criteria.</td></tr>
                                 )}
                             </tbody>
                         </table>
@@ -163,7 +192,7 @@ const MarkWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                 </div>
             ) : !isLoading && (
                  <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg text-center">
-                    <p className="text-gray-500 dark:text-gray-400">Please select criteria and click 'Load' to generate the ledger.</p>
+                    <p className="text-gray-500 dark:text-gray-400">Please select criteria and click 'Refresh' to generate the ledger.</p>
                 </div>
             )}
         </div>

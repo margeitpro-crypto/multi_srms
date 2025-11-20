@@ -45,8 +45,11 @@ interface DataContextType {
     setAssignments: React.Dispatch<React.SetStateAction<AssignmentsMap>>;
     setExtraCreditAssignments: React.Dispatch<React.SetStateAction<ExtraCreditAssignmentsMap>>;
     setMarks: React.Dispatch<React.SetStateAction<MarksMap>>;
+    setGrades: React.Dispatch<React.SetStateAction<GradesMap>>;
     setSchoolPageVisibility: React.Dispatch<React.SetStateAction<SchoolPageVisibility>>;
     updateStudentMarks: (updatedMarks: MarksMap) => void;
+    updateStudentGrades: (updatedGrades: GradesMap) => void;
+    deleteStudentMarks: (studentId: string, academicYear: string) => Promise<void>;
     // Helper function
     resetData: () => void;
 }
@@ -167,6 +170,35 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             addToast('Failed to save marks to the database. Please try again.', 'error');
         }
     };
+    
+    const deleteStudentMarks = async (studentId: string, academicYear: string) => {
+        try {
+            // Delete marks from the API
+            await dataService.marks.deleteMarks(studentId, academicYear);
+            
+            // Update local state by removing the marks for this student and year
+            setMarks(prev => {
+                const newMarks = { ...prev };
+                if (newMarks[studentId]) {
+                    // Create a new object without the marks for this student
+                    const { [studentId]: removed, ...rest } = newMarks;
+                    return rest;
+                }
+                return newMarks;
+            });
+            
+            addToast('Marks deleted successfully!', 'success');
+        } catch (error) {
+            console.error('Error deleting marks from API:', error);
+            addToast('Failed to delete marks from the database. Please try again.', 'error');
+            throw error;
+        }
+    };
+    
+    const updateStudentGrades = (updatedGrades: GradesMap) => {
+        // Update local grades state
+        setGrades(prev => ({ ...prev, ...updatedGrades }));
+    };
 
     const resetData = () => {
         if (window.confirm("Are you sure you want to reset all data to the original state? All your changes will be lost.")) {
@@ -180,8 +212,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const value = {
         schools, students, subjects, assignments, extraCreditAssignments, marks, grades, schoolPageVisibility,
         isDataLoading,
-        setSchools, setStudents, setSubjects, setAssignments, setExtraCreditAssignments, setMarks, setSchoolPageVisibility,
+        setSchools, setStudents, setSubjects, setAssignments, setExtraCreditAssignments, setMarks, setGrades, setSchoolPageVisibility,
         updateStudentMarks,
+        updateStudentGrades,
+        deleteStudentMarks,
         resetData
     };
 

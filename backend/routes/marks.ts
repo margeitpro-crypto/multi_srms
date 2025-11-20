@@ -62,4 +62,31 @@ router.post('/:studentId/:year', async (req: Request, res: Response) => {
   }
 });
 
+// DELETE /api/marks/:studentId/:year - Delete marks for a student in a specific year
+router.delete('/:studentId/:year', async (req: Request, res: Response) => {
+  try {
+    const studentSystemId = req.params.studentId;
+    const academicYear = parseInt(req.params.year);
+    
+    if (!studentSystemId || isNaN(academicYear)) {
+      return res.status(400).json({ error: 'Invalid student ID or academic year' });
+    }
+    
+    // Get the database ID for the student
+    const studentId = await subjectAssignmentsService.getStudentDatabaseIdBySystemId(studentSystemId);
+    if (studentId === null) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+    
+    await marksService.deleteStudentMarks(studentId, academicYear);
+    
+    res.status(200).json({ 
+      message: 'Marks deleted successfully'
+    });
+  } catch (err) {
+    console.error('Error deleting student marks:', err);
+    res.status(500).json({ error: 'Failed to delete student marks' });
+  }
+});
+
 export default router;
