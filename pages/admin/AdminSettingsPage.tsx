@@ -3,7 +3,6 @@ import { usePageTitle } from '../../context/PageTitleContext';
 import InputField from '../../components/InputField';
 import Button from '../../components/Button';
 import { useAppContext } from '../../context/AppContext';
-import { useTheme } from '../../context/ThemeContext';
 import ToggleSwitch from '../../components/ToggleSwitch';
 import { WrenchScrewdriverIcon } from '../../components/icons/WrenchScrewdriverIcon';
 import { CalculatorIcon } from '../../components/icons/CalculatorIcon';
