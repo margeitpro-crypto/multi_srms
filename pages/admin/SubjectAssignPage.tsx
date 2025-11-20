@@ -16,7 +16,7 @@ const SubjectAssignPage: React.FC<{ school?: School, isReadOnly?: boolean }> = (
         setPageTitle('Assign Subjects to Student');
     }, [setPageTitle]);
 
-    const { schools, subjects: allSubjects, students: allStudents, assignments, extraCreditAssignments, setAssignments, setExtraCreditAssignments } = useData();
+    const { schools, subjects: allSubjects, students: allStudents, assignments, extraCreditAssignments, setAssignments, setExtraCreditAssignments, academicYears } = useData();
     const { addToast } = useAppContext();
 
     const [selectedSchoolId, setSelectedSchoolId] = useState<string>(school?.id.toString() || '');
@@ -226,9 +226,9 @@ const SubjectAssignPage: React.FC<{ school?: School, isReadOnly?: boolean }> = (
                         )}
                     </div>
                      <Select id="year-selector" label="Year*" value={selectedYear} onChange={handleYearChange}>
-                        <option>2082</option>
-                        <option>2081</option>
-                        <option>2080</option>
+                        {academicYears.filter(y => y.is_active).map(year => (
+                            <option key={year.id} value={year.year}>{year.year}</option>
+                        ))}
                      </Select>
                      <Select id="class-selector" label="Class*" value={selectedClass} onChange={handleClassChange}>
                         <option value="11">Grade 11</option>

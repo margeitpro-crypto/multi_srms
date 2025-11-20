@@ -35,7 +35,7 @@ const MarksEntryPage: React.FC<{ school?: School }> = ({ school }) => {
 
     const { addToast } = useAppContext();
     // FIX: Get global marks state and setter from DataContext
-    const { students: MOCK_ADMIN_STUDENTS, subjects: MOCK_SUBJECTS, assignments: MOCK_STUDENT_SUBJECT_ASSIGNMENTS, marks: allMarks, updateStudentMarks, extraCreditAssignments, schoolPageVisibility, setAssignments, setExtraCreditAssignments, updateStudentGrades } = useData();
+    const { students: MOCK_ADMIN_STUDENTS, subjects: MOCK_SUBJECTS, assignments: MOCK_STUDENT_SUBJECT_ASSIGNMENTS, marks: allMarks, updateStudentMarks, extraCreditAssignments, schoolPageVisibility, setAssignments, setExtraCreditAssignments, updateStudentGrades, academicYears } = useData();
     const { loggedInSchool } = useAuth();
 
     const isReadOnly = schoolPageVisibility?.marksEntry === 'read-only';
@@ -322,7 +322,11 @@ const MarksEntryPage: React.FC<{ school?: School }> = ({ school }) => {
                             {schoolToDisplay.iemisCode} | {schoolToDisplay.name}
                         </div>
                     </div>
-                    <Select id="year-selector" label="Year*" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}><option>2082</option><option>2081</option><option>2080</option></Select>
+                    <Select id="year-selector" label="Year*" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
+                        {academicYears.filter(y => y.is_active).map(year => (
+                            <option key={year.id} value={year.year}>{year.year}</option>
+                        ))}
+                    </Select>
                     <Select id="class-selector" label="Class*" value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)}><option value="11">11</option><option value="12">12</option></Select>
                     <Button onClick={handleLoad} disabled={isLoading}>{isLoading ? <span className="flex items-center"><Loader /> Loading...</span> : 'Load'}</Button>
                 </div>

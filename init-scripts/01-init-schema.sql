@@ -175,6 +175,18 @@ CREATE TABLE application_settings (
 );
 
 -- =============================================
+-- Table: academic_years
+-- Purpose: Stores the list of academic years available in the system.
+-- =============================================
+CREATE TABLE academic_years (
+    id SERIAL PRIMARY KEY,
+    year INTEGER UNIQUE NOT NULL,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =============================================
 -- Indexes for Performance Optimization
 -- =============================================
 -- Indexes on foreign keys and frequently queried columns to speed up joins and searches.
@@ -218,6 +230,7 @@ SELECT apply_updated_at_trigger('students');
 SELECT apply_updated_at_trigger('subjects');
 SELECT apply_updated_at_trigger('student_marks');
 SELECT apply_updated_at_trigger('application_settings');
+SELECT apply_updated_at_trigger('academic_years');
 
 
 -- =============================================

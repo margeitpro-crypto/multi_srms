@@ -272,11 +272,84 @@ export const marksApi = {
   }
 };
 
+// Academic Years API
+export const academicYearsApi = {
+  getAll: async (): Promise<any[]> => {
+    try {
+      const response = await api.get<any[]>('/academic-years');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching academic years:', error);
+      throw error;
+    }
+  },
+  
+  getActive: async (): Promise<any[]> => {
+    try {
+      const response = await api.get<any[]>('/academic-years/active');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching active academic years:', error);
+      throw error;
+    }
+  },
+  
+  getById: async (id: number): Promise<any> => {
+    try {
+      const response = await api.get<any>(`/academic-years/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching academic year with id ${id}:`, error);
+      throw error;
+    }
+  },
+  
+  create: async (academicYear: { year: number; is_active: boolean }): Promise<any> => {
+    try {
+      const response = await api.post<any>('/academic-years', academicYear);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating academic year:', error);
+      throw error;
+    }
+  },
+  
+  update: async (id: number, academicYear: { year: number; is_active: boolean }): Promise<any> => {
+    try {
+      const response = await api.put<any>(`/academic-years/${id}`, academicYear);
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating academic year with id ${id}:`, error);
+      throw error;
+    }
+  },
+  
+  delete: async (id: number): Promise<void> => {
+    try {
+      await api.delete(`/academic-years/${id}`);
+    } catch (error) {
+      console.error(`Error deleting academic year with id ${id}:`, error);
+      throw error;
+    }
+  },
+  
+  toggleActive: async (id: number, is_active: boolean): Promise<any> => {
+    try {
+      const response = await api.put<any>(`/academic-years/${id}/toggle`, { is_active });
+      return response.data;
+    } catch (error) {
+      console.error(`Error toggling academic year status with id ${id}:`, error);
+      throw error;
+    }
+  }
+};
+
 export default {
   schools: schoolsApi,
   students: studentsApi,
   subjects: subjectsApi,
   users: usersApi,
   subjectAssignments: subjectAssignmentsApi,
-  marks: marksApi
+  marks: marksApi,
+  academicYears: academicYearsApi
 };

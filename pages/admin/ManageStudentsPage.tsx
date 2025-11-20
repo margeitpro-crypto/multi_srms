@@ -28,7 +28,7 @@ const ManageStudentsPage: React.FC = () => {
     setPageTitle('Manage Students');
   }, [setPageTitle]);
 
-  const { students: allStudents, setStudents: setAllStudents, schools, isDataLoading: isLoading } = useData();
+  const { students: allStudents, setStudents: setAllStudents, schools, isDataLoading: isLoading, academicYears } = useData();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -274,9 +274,9 @@ const ManageStudentsPage: React.FC = () => {
                     setShowStudents(false);
                 }}
             >
-                <option>2082</option>
-                <option>2081</option>
-                <option>2080</option>
+                {academicYears.filter(y => y.is_active).map(year => (
+                    <option key={year.id} value={year.year}>{year.year}</option>
+                ))}
             </Select>
             
              <Select

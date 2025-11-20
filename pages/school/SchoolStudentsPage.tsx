@@ -29,7 +29,7 @@ const SchoolStudentsPage: React.FC<{ isReadOnly?: boolean }> = ({ isReadOnly = f
     setPageTitle('Manage Students');
   }, [setPageTitle]);
 
-  const { students: allStudents, setStudents: setAllStudents, isDataLoading: isLoading, schoolPageVisibility } = useData();
+  const { students: allStudents, setStudents: setAllStudents, isDataLoading: isLoading, schoolPageVisibility, academicYears } = useData();
   const { loggedInSchool } = useAuth();
   const { addToast } = useAppContext();
   
@@ -244,9 +244,9 @@ const SchoolStudentsPage: React.FC<{ isReadOnly?: boolean }> = ({ isReadOnly = f
                     setShowStudents(false);
                 }}
             >
-                <option>2082</option>
-                <option>2081</option>
-                <option>2080</option>
+                {academicYears.filter(y => y.is_active).map(year => (
+                    <option key={year.id} value={year.year}>{year.year}</option>
+                ))}
             </Select>
              <Select
                 id="class-selector"

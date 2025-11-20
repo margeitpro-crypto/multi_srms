@@ -36,8 +36,13 @@ interface DataContextType {
     marks: MarksMap;
     grades: GradesMap;
     schoolPageVisibility: SchoolPageVisibility;
+    // Add academic years
+    academicYears: any[];
     // Loading state
     isDataLoading: boolean;
+    // Add these new properties for refresh triggers
+    marksRefreshTrigger: number;
+    gradesRefreshTrigger: number;
     // Modifiers
     setSchools: React.Dispatch<React.SetStateAction<School[]>>;
     setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
@@ -47,6 +52,7 @@ interface DataContextType {
     setMarks: React.Dispatch<React.SetStateAction<MarksMap>>;
     setGrades: React.Dispatch<React.SetStateAction<GradesMap>>;
     setSchoolPageVisibility: React.Dispatch<React.SetStateAction<SchoolPageVisibility>>;
+    setAcademicYears: React.Dispatch<React.SetStateAction<any[]>>;
     updateStudentMarks: (updatedMarks: MarksMap) => void;
     updateStudentGrades: (updatedGrades: GradesMap) => void;
     deleteStudentMarks: (studentId: string, academicYear: string) => Promise<void>;
@@ -68,21 +74,28 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [marks, setMarks] = useState<MarksMap>({});
     const [grades, setGrades] = useState<GradesMap>({});
     const [schoolPageVisibility, setSchoolPageVisibility] = useState<SchoolPageVisibility>({} as SchoolPageVisibility);
+    // Add academic years state
+    const [academicYears, setAcademicYears] = useState<any[]>([]);
+    // Add these new state variables for refresh triggers
+    const [marksRefreshTrigger, setMarksRefreshTrigger] = useState(0);
+    const [gradesRefreshTrigger, setGradesRefreshTrigger] = useState(0);
 
     // Load initial data from API - no fallback to mock data
     useEffect(() => {
         const loadData = async () => {
             try {
                 // Fetch data from API
-                const [schoolsData, studentsData, subjectsData] = await Promise.all([
+                const [schoolsData, studentsData, subjectsData, academicYearsData] = await Promise.all([
                     dataService.schools.getAll(),
                     dataService.students.getAll(),
-                    dataService.subjects.getAll()
+                    dataService.subjects.getAll(),
+                    dataService.academicYears.getAll()
                 ]);
                 
                 setSchools(schoolsData);
                 setStudents(studentsData);
                 setSubjects(subjectsData);
+                setAcademicYears(academicYearsData);
                 
                 // For now, we'll keep using mock data for grades and school page visibility
                 // In a real application, these would also come from the API
@@ -165,6 +178,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
             setGrades(prevGrades => ({ ...prevGrades, ...newGrades }));
             
+            // Trigger refresh for marks and grades
+            setMarksRefreshTrigger(prev => prev + 1);
+            setGradesRefreshTrigger(prev => prev + 1);
+            
             addToast('Marks saved successfully!', 'success');
         } catch (error: any) {
             console.error('Error saving marks to API:', error);
@@ -213,9 +230,12 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     const value = {
-        schools, students, subjects, assignments, extraCreditAssignments, marks, grades, schoolPageVisibility,
+        schools, students, subjects, assignments, extraCreditAssignments, marks, grades, schoolPageVisibility, academicYears,
         isDataLoading,
-        setSchools, setStudents, setSubjects, setAssignments, setExtraCreditAssignments, setMarks, setGrades, setSchoolPageVisibility,
+        // Add the refresh triggers to the context value
+        marksRefreshTrigger,
+        gradesRefreshTrigger,
+        setSchools, setStudents, setSubjects, setAssignments, setExtraCreditAssignments, setMarks, setGrades, setSchoolPageVisibility, setAcademicYears,
         updateStudentMarks,
         updateStudentGrades,
         deleteStudentMarks,

@@ -35,7 +35,7 @@ const MarksEntryAdminPage: React.FC = () => {
 
     const { addToast } = useAppContext();
     // FIX: Get global marks state and setter from DataContext
-    const { schools, students: MOCK_ADMIN_STUDENTS, subjects: MOCK_SUBJECTS, assignments: MOCK_STUDENT_SUBJECT_ASSIGNMENTS, marks: allMarks, updateStudentMarks, extraCreditAssignments, setAssignments, setExtraCreditAssignments, updateStudentGrades } = useData();
+    const { schools, students: MOCK_ADMIN_STUDENTS, subjects: MOCK_SUBJECTS, assignments: MOCK_STUDENT_SUBJECT_ASSIGNMENTS, marks: allMarks, updateStudentMarks, extraCreditAssignments, setAssignments, setExtraCreditAssignments, updateStudentGrades, academicYears } = useData();
 
     const [selectedSchoolId, setSelectedSchoolId] = useState<string>('');
     const [selectedYear, setSelectedYear] = useState('2082');
@@ -338,9 +338,9 @@ const MarksEntryAdminPage: React.FC = () => {
                         </div>
                     </div>
                     <Select id="year-selector" label="Year*" value={selectedYear} onChange={(e) => {setSelectedYear(e.target.value); setDataLoaded(false);}}>
-                        <option>2082</option>
-                        <option>2081</option>
-                        <option>2080</option>
+                        {academicYears.filter(y => y.is_active).map(year => (
+                            <option key={year.id} value={year.year}>{year.year}</option>
+                        ))}
                     </Select>
                     <Select id="class-selector" label="Class*" value={selectedClass} onChange={(e) => {setSelectedClass(e.target.value); setDataLoaded(false);}}>
                         <option value="11">11</option>

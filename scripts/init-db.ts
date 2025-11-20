@@ -137,6 +137,9 @@ class DatabaseInitializer {
       // Add default admin user
       await this.addDefaultAdminUser(client);
       
+      // Add default academic years
+      await this.addDefaultAcademicYears(client);
+      
       await client.end();
       return true;
     } catch (error) {
@@ -167,6 +170,35 @@ class DatabaseInitializer {
       console.log('✓ Default admin user added successfully');
     } catch (error) {
       console.error('✗ Error adding default admin user:', (error as Error).message);
+    }
+  }
+
+  /**
+   * Add default academic years
+   */
+  private async addDefaultAcademicYears(client: Client): Promise<void> {
+    try {
+      // Insert default academic years
+      const defaultYears = [
+        { year: 2080, is_active: true },
+        { year: 2081, is_active: true },
+        { year: 2082, is_active: true },
+        { year: 2083, is_active: true },
+        { year: 2084, is_active: true }
+      ];
+      
+      for (const academicYear of defaultYears) {
+        await client.query(
+          `INSERT INTO academic_years (year, is_active) 
+           VALUES ($1, $2) 
+           ON CONFLICT (year) DO NOTHING`,
+          [academicYear.year, academicYear.is_active]
+        );
+      }
+      
+      console.log('✓ Default academic years added successfully');
+    } catch (error) {
+      console.error('✗ Error adding default academic years:', (error as Error).message);
     }
   }
 

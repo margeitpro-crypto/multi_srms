@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { usePageTitle } from '../../context/PageTitleContext';
 import InputField from '../../components/InputField';
@@ -17,6 +15,7 @@ import { useData } from '../../context/DataContext';
 import { ComputerDesktopIcon } from '../../components/icons/ComputerDesktopIcon';
 import Loader from '../../components/Loader';
 import { SchoolPageVisibility, PagePermission } from '../../types';
+import YearSetup from '../../components/YearSetup';
 
 const GeneralSettings = () => {
     const { addToast } = useAppContext();
@@ -441,12 +440,16 @@ const AdminSettingsPage: React.FC = () => {
     const tabs = [
         { id: 'general', label: 'General', icon: <WrenchScrewdriverIcon className="w-5 h-5" />, component: <GeneralSettings /> },
         { id: 'grading', label: 'Grading', icon: <CalculatorIcon className="w-5 h-5" />, component: <GradingSettings /> },
+        { id: 'year-setup', label: 'Year Setup', icon: <CircleStackIcon className="w-5 h-5" />, component: <YearSetup /> },
         { id: 'school-controller', label: 'School Page Controller', icon: <ComputerDesktopIcon className="w-5 h-5" />, component: <SchoolPageController /> },
         { id: 'appearance', label: 'Appearance', icon: <PaintBrushIcon className="w-5 h-5" />, component: <AppearanceSettings /> },
         { id: 'security', label: 'Security', icon: <ShieldCheckIcon className="w-5 h-5" />, component: <SecuritySettings /> },
         { id: 'payment', label: 'Payment', icon: <CreditCardIcon className="w-5 h-5" />, component: <PaymentSettings /> },
         { id: 'data', label: 'Data', icon: <CircleStackIcon className="w-5 h-5" />, component: <DataManagement /> },
     ];
+
+    // Find the active tab object
+    const activeTabObj = tabs.find(tab => tab.id === activeTab);
 
     return (
        <div className="animate-fade-in">
@@ -460,6 +463,7 @@ const AdminSettingsPage: React.FC = () => {
                                 ? 'border-b-2 border-primary-600 text-primary-600 dark:text-primary-400'
                                 : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 border-b-2 border-transparent'
                         }`}
+                        aria-selected={activeTab === tab.id}
                     >
                         {tab.icon}
                         <span className="ml-2">{tab.label}</span>
@@ -467,7 +471,10 @@ const AdminSettingsPage: React.FC = () => {
                 ))}
             </div>
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
-                {tabs.find(tab => tab.id === activeTab)?.component}
+                {/* Add a key to force re-render when tab changes */}
+                <div key={activeTab}>
+                    {activeTabObj?.component}
+                </div>
             </div>
         </div>
     );

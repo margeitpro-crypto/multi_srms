@@ -20,7 +20,7 @@ const MarkWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
         setPageTitle('Mark Wise Ledger');
     }, [setPageTitle]);
 
-    const { schools, students: allStudents, subjects: allSubjects, marks: allMarks, assignments } = useData();
+    const { schools, students: allStudents, subjects: allSubjects, marks: allMarks, assignments, academicYears, marksRefreshTrigger } = useData();
 
     const [selectedSchoolId, setSelectedSchoolId] = useState<string>(school?.id.toString() || '');
     const [selectedYear, setSelectedYear] = useState('2082');
@@ -98,7 +98,7 @@ const MarkWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
             subjects: assignedSubjects,
             students: studentsWithMarks
         };
-    }, [ledgerData, allMarks, assignments]);
+    }, [ledgerData, allMarks, assignments, marksRefreshTrigger]);
 
     return (
         <div className="animate-fade-in space-y-6">
@@ -122,9 +122,9 @@ const MarkWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                         )}
                      </div>
                      <Select id="year-selector" label="Year*" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
-                        <option>2082</option>
-                        <option>2081</option>
-                        <option>2080</option>
+                        {academicYears.filter(y => y.is_active).map(year => (
+                            <option key={year.id} value={year.year}>{year.year}</option>
+                        ))}
                      </Select>
                      <Select id="class-selector" label="Class*" value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)}>
                         <option value="11">Grade 11</option>
@@ -155,7 +155,7 @@ const MarkWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                            <thead className="bg-gray-50 dark:bg-gray-700">
                                 <tr>
                                     <th rowSpan={2} className="border p-2 dark:border-gray-600">S.No.</th>
-                                    <th rowSpan={2} className="border p-2 dark:border-gray-600 min-w-40">School Name</th>
+                                    
                                     <th rowSpan={2} className="border p-2 dark:border-gray-600">School Code</th>
                                     <th rowSpan={2} className="border p-2 dark:border-gray-600 min-w-32">Student Name</th>
                                     <th rowSpan={2} className="border p-2 dark:border-gray-600">Symbol Number</th>
@@ -178,7 +178,7 @@ const MarkWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                                     return (
                                         <tr key={student.id} className="hover:bg-gray-50 dark:hover:bg-gray-600/50">
                                             <td className="border p-2 dark:border-gray-600">{index + 1}</td>
-                                            <td className="border p-2 dark:border-gray-600">{processedLedgerData.school.name}</td>
+                                            
                                             <td className="border p-2 dark:border-gray-600">{processedLedgerData.school.iemisCode}</td>
                                             <td className="border p-2 dark:border-gray-600">{student.name}</td>
                                             <td className="border p-2 dark:border-gray-600">{student.symbol_no}</td>

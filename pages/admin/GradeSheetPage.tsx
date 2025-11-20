@@ -1,7 +1,3 @@
-
-
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { usePageTitle } from '../../context/PageTitleContext';
 import Select from '../../components/Select';
@@ -25,7 +21,7 @@ const GradeSheetPage: React.FC<{ school?: School }> = ({ school }) => {
     const navigate = useNavigate();
     const { addToast } = useAppContext();
     // FIX: Get data from the central DataContext.
-    const { schools: MOCK_SCHOOLS, students: MOCK_ADMIN_STUDENTS } = useData();
+    const { schools: MOCK_SCHOOLS, students: MOCK_ADMIN_STUDENTS, academicYears, marksRefreshTrigger } = useData();
 
     const [selectedSchoolId, setSelectedSchoolId] = useState<string>(school?.id.toString() || '');
     const [selectedYear, setSelectedYear] = useState('2082');
@@ -34,6 +30,14 @@ const GradeSheetPage: React.FC<{ school?: School }> = ({ school }) => {
     const [loadedStudents, setLoadedStudents] = useState<Student[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [showHeader, setShowHeader] = useState(true);
+
+    // Add useEffect to trigger reload when marks are updated
+    useEffect(() => {
+        // This will trigger whenever marks are updated
+        if (selectedSchoolId && selectedYear && selectedClass) {
+            handleLoad();
+        }
+    }, [marksRefreshTrigger]); // Add marksRefreshTrigger as dependency
 
     const handleLoad = () => {
         if (!selectedSchoolId) return;
@@ -101,9 +105,9 @@ const GradeSheetPage: React.FC<{ school?: School }> = ({ school }) => {
                         )}
                      </div>
                      <Select id="year-selector" label="Year*" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
-                        <option>2082</option>
-                        <option>2081</option>
-                        <option>2080</option>
+                        {academicYears.filter(y => y.is_active).map(year => (
+                            <option key={year.id} value={year.year}>{year.year}</option>
+                        ))}
                      </Select>
                      <Select id="class-selector" label="Class*" value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)}>
                         <option value="11">Grade 11</option>
