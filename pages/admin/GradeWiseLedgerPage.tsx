@@ -9,6 +9,25 @@ import { DocumentArrowDownIcon } from '../../components/icons/DocumentArrowDownI
 // FIX: Use central data context instead of importing mock data from pages.
 import { useData } from '../../context/DataContext';
 
+// Print styles to ensure only the ledger content is printed
+const printStyles = `
+  @media print {
+    body * {
+      visibility: hidden;
+    }
+    .print-ledger-content,
+    .print-ledger-content * {
+      visibility: visible;
+    }
+    .print-ledger-content {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+    }
+  }
+`;
+
 // Structure for the loaded data
 interface LedgerData {
     school: School;
@@ -21,6 +40,17 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
     useEffect(() => {
         setPageTitle('Grade Wise Ledger');
     }, [setPageTitle]);
+    
+    // Inject print styles
+    useEffect(() => {
+        const styleElement = document.createElement('style');
+        styleElement.innerHTML = printStyles;
+        document.head.appendChild(styleElement);
+        
+        return () => {
+            document.head.removeChild(styleElement);
+        };
+    }, []);
     
     // FIX: Get data from the central DataContext, including assignments.
     const { schools, students: allStudents, subjects: allSubjects, grades: allGrades, assignments, academicYears, gradesRefreshTrigger, appSettings } = useData();
@@ -87,7 +117,53 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
             students: studentsWithGrades
         };
     }, [ledgerData, allGrades, assignments, gradesRefreshTrigger]);
-
+    
+    // Function to export data as CSV
+    const exportToCSV = () => {
+        if (!processedLedgerData) return;
+        
+        // Create CSV content
+        let csvContent = "S.No.,School Code,School Name,Student Name,DOB,Symbol Number";
+        
+        // Add subject headers
+        processedLedgerData.subjects.forEach(subject => {
+            csvContent += `,${subject.name} (IN),${subject.name} (TH)`;
+        });
+        
+        csvContent += ",Final GPA\n";
+        
+        // Add data rows
+        processedLedgerData.students.forEach((student, index) => {
+            csvContent += `${index + 1},${processedLedgerData.school.iemisCode},"${processedLedgerData.school.name}","${student.name}","${student.dob}",${student.symbol_no}`;
+            
+            // Add subject grades
+            processedLedgerData.subjects.forEach(subject => {
+                const isAssigned = student.assignedSubjectIds.has(subject.id);
+                const gradeInfo = student.studentGrades?.subjects[subject.id];
+                
+                if (isAssigned && gradeInfo) {
+                    csvContent += `,${gradeInfo.in || 'NG'},${gradeInfo.th || 'NG'}`;
+                } else {
+                    csvContent += ",-,";
+                }
+            });
+            
+            // Add final GPA
+            const gpa = student.studentGrades ? (student.studentGrades.gpa === 0 ? 'NG' : student.studentGrades.gpa.toFixed(2)) : 'NG';
+            csvContent += `,${gpa}\n`;
+        });
+        
+        // Create and download CSV file
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `grade-wise-ledger-${selectedYear}-grade-${selectedClass}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
     return (
         <div className="animate-fade-in space-y-6">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg print:hidden">
@@ -125,17 +201,17 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
             </div>
 
             {processedLedgerData ? (
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg animate-fade-in">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg animate-fade-in print-ledger-content">
                     <div className="text-center mb-6">
                         <img src={processedLedgerData.school.logoUrl} alt="School Logo" className="h-24 w-24 mx-auto mb-4 rounded-full"/>
                         <h2 className="text-xl font-bold text-red-600">{processedLedgerData.school.name}</h2>
                         <p className="text-sm font-medium text-red-600">{processedLedgerData.school.municipality}</p>
-                        <p className="text-sm font-medium text-red-600">YEAR : {selectedYear} GRADE {selectedClass}</p>
+                        <p className="text-sm font-medium text-red-600">Grade Wise Ledger - {selectedYear} GRADE {selectedClass}</p>
                     </div>
 
                     <div className="flex justify-end space-x-2 mb-4 print:hidden">
                         <Button onClick={() => window.print()} variant="secondary" leftIcon={<PrinterIcon className="w-4 h-4" />}>Print</Button>
-                        <Button variant="secondary" leftIcon={<DocumentArrowDownIcon className="w-4 h-4" />}>Export</Button>
+                        <Button onClick={exportToCSV} variant="secondary" leftIcon={<DocumentArrowDownIcon className="w-4 h-4" />}>Export</Button>
                     </div>
 
                     <div className="overflow-x-auto">
@@ -147,8 +223,7 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                                     <th rowSpan={2} className="border p-2 dark:border-gray-600">School Code</th>
                                     <th rowSpan={2} className="border p-2 dark:border-gray-600 min-w-32">Student Name</th>
                                     <th rowSpan={2} className="border p-2 dark:border-gray-600 min-w-24">DOB</th>
-                                    <th rowSpan={2} className="border p-2 dark:border-gray-600 min-w-32">Father Name</th>
-                                    <th rowSpan={2} className="border p-2 dark:border-gray-600 min-w-32">Mother Name</th>
+
                                     <th rowSpan={2} className="border p-2 dark:border-gray-600">Symbol Number</th>
                                     {processedLedgerData.subjects.map(subject => (
                                         <th key={subject.id} colSpan={2} className="border p-2 dark:border-gray-600 text-center min-w-24">{subject.name}</th>
@@ -173,8 +248,7 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                                             <td className="border p-2 dark:border-gray-600">{processedLedgerData.school.iemisCode}</td>
                                             <td className="border p-2 dark:border-gray-600">{student.name}</td>
                                             <td className="border p-2 dark:border-gray-600">{student.dob}</td>
-                                            <td className="border p-2 dark:border-gray-600">{student.father_name}</td>
-                                            <td className="border p-2 dark:border-gray-600">{student.mother_name}</td>
+
                                             <td className="border p-2 dark:border-gray-600">{student.symbol_no}</td>
                                             {processedLedgerData.subjects.map(subject => {
                                                 const isAssigned = student.assignedSubjectIds.has(subject.id);
@@ -199,7 +273,7 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                     </div>
                 </div>
             ) : !isLoading && (
-                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg text-center">
+                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg text-center print-ledger-content">
                     <p className="text-gray-500 dark:text-gray-400">Please select criteria and click 'Refresh' to generate the ledger.</p>
                 </div>
             )}

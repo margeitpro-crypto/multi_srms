@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Select from '../../components/Select';
 import Button from '../../components/Button';
 import { School, Student, Subject } from '../../types';
@@ -7,6 +7,25 @@ import Loader from '../../components/Loader';
 import { PrinterIcon } from '../../components/icons/PrinterIcon';
 import { DocumentArrowDownIcon } from '../../components/icons/DocumentArrowDownIcon';
 import { useData } from '../../context/DataContext';
+import Modal from '../../components/Modal';
+
+// Add CSS for print-specific styling
+const printStyles = `
+  @media print {
+    body * {
+      visibility: hidden;
+    }
+    .print-area, .print-area * {
+      visibility: visible;
+    }
+    .print-area {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+    }
+  }
+`;
 
 interface LedgerData {
     school: School;
@@ -20,6 +39,17 @@ const MarkWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
         setPageTitle('Mark Wise Ledger');
     }, [setPageTitle]);
     
+    // Add print styles to document head
+    useEffect(() => {
+        const style = document.createElement('style');
+        style.innerHTML = printStyles;
+        document.head.appendChild(style);
+        
+        return () => {
+            document.head.removeChild(style);
+        };
+    }, []);
+    
     // FIX: Get data from the central DataContext, including assignments.
     const { schools, students: allStudents, subjects: allSubjects, marks: allMarks, assignments, academicYears, marksRefreshTrigger, appSettings } = useData();
 
@@ -29,6 +59,9 @@ const MarkWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
     
     const [isLoading, setIsLoading] = useState(false);
     const [ledgerData, setLedgerData] = useState<LedgerData | null>(null);
+    
+    // State for PDF generation
+    const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
     
     // Remove the useEffect that was updating selectedYear from appSettings
     // Remove the auto-load useEffect
@@ -97,6 +130,54 @@ const MarkWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
         };
     }, [ledgerData, allMarks, assignments, marksRefreshTrigger]);
 
+    // Create a ref for the content to be exported
+    const contentRef = useRef<HTMLDivElement>(null);
+    
+    // Function to export data as CSV
+    const exportToCSV = () => {
+        if (!processedLedgerData) return;
+        
+        // Create CSV content
+        let csvContent = "S.No.,School Code,School Name,Student Name,Symbol Number";
+        
+        // Add subject headers
+        processedLedgerData.subjects.forEach(subject => {
+            csvContent += `,${subject.name} (IN),${subject.name} (TH)`;
+        });
+        
+        csvContent += ",Total Marks\n";
+        
+        // Add data rows
+        processedLedgerData.students.forEach((student, index) => {
+            csvContent += `${index + 1},${processedLedgerData.school.iemisCode},"${processedLedgerData.school.name}","${student.name}",${student.symbol_no}`;
+            
+            // Add subject marks
+            processedLedgerData.subjects.forEach(subject => {
+                const isAssigned = student.assignedSubjectIds.has(subject.id);
+                const subjectMark = student.studentMarks?.[subject.id];
+                
+                if (isAssigned && typeof subjectMark === 'object' && subjectMark) {
+                    csvContent += `,${subjectMark.internal || 0},${subjectMark.theory || 0}`;
+                } else {
+                    csvContent += ",-,";
+                }
+            });
+            
+            csvContent += `,${student.totalMarks || 0}\n`;
+        });
+        
+        // Create and download CSV file
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `mark-wise-ledger-${selectedYear}-grade-${selectedClass}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+    
     return (
         <div className="animate-fade-in space-y-6">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg print:hidden">
@@ -134,17 +215,18 @@ const MarkWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
             </div>
 
             {processedLedgerData ? (
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg animate-fade-in">
+                // Add ref to the div that will be exported and printed
+                <div ref={contentRef} className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg animate-fade-in print-area">
                     <div className="text-center mb-6">
                         <img src={processedLedgerData.school.logoUrl} alt="School Logo" className="h-24 w-24 mx-auto mb-4 rounded-full"/>
                         <h2 className="text-xl font-bold text-red-600">{processedLedgerData.school.name}</h2>
                         <p className="text-sm font-medium text-red-600">{processedLedgerData.school.municipality}</p>
-                        <p className="text-sm font-medium text-red-600">YEAR : {selectedYear} GRADE {selectedClass}</p>
+                        <p className="text-sm font-medium text-red-600">Mark Wise Ledger -  {selectedYear} GRADE {selectedClass}</p>
                     </div>
-
+                
                     <div className="flex justify-end space-x-2 mb-4 print:hidden">
                         <Button onClick={() => window.print()} variant="secondary" leftIcon={<PrinterIcon className="w-4 h-4" />}>Print</Button>
-                        <Button variant="secondary" leftIcon={<DocumentArrowDownIcon className="w-4 h-4" />}>Export</Button>
+                        <Button onClick={exportToCSV} variant="secondary" leftIcon={<DocumentArrowDownIcon className="w-4 h-4" />}>Export</Button>
                     </div>
 
                     <div className="overflow-x-auto">
