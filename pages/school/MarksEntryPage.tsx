@@ -52,6 +52,13 @@ const MarksEntryPage: React.FC<{ school?: School }> = ({ school }) => {
     
     const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
 
+    // Automatically load data when component mounts and when dependencies change
+    useEffect(() => {
+        if (schoolToDisplay && selectedYear && selectedClass) {
+            handleLoad();
+        }
+    }, [schoolToDisplay, selectedYear, selectedClass]);
+
     const handleLoad = () => {
         if (!schoolToDisplay) return;
         setIsLoading(true);

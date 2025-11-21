@@ -142,7 +142,7 @@ const GradeSheetPage: React.FC<{ school?: School }> = ({ school }) => {
                             />
                         </div>
                         <div className="flex space-x-2">
-                            <Button variant="secondary" onClick={() => window.print()}>Print List</Button>
+                            
                             <Button onClick={handlePrintAll} leftIcon={<PrinterIcon className="w-4 h-4" />}>Print All Results ({filteredStudents.length})</Button>
                         </div>
                     </div>

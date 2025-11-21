@@ -114,3 +114,46 @@ export function convertBsToAd(bsDateStr: string): string | null {
 
   return `${y}-${m}-${d}`;
 }
+
+/**
+ * Converts a Nepali (Bikram Sambat) date string to an English (Gregorian) date string.
+ * @param bsDateStr - The BS date string in 'YYYY-MM-DD' format.
+ * @returns The corresponding AD date string in 'YYYY-MM-DD' format, or null if invalid.
+ */
+export function bsToAd(bsDateStr: string): string | null {
+    return convertBsToAd(bsDateStr);
+}
+
+// Utility function to convert date to YY-MM-DD format
+export const formatToYYMMDD = (dateStr: string): string => {
+    if (!dateStr) return '';
+    
+    // If it's already in YY-MM-DD format, return as is
+    if (dateStr.match(/^\d{2}-\d{2}-\d{2}$/)) {
+        return dateStr;
+    }
+    
+    // If it's in YYYY-MM-DD format, convert to YY-MM-DD
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        return dateStr.substring(2);
+    }
+    
+    // If it's an ISO string, extract the date part and convert
+    if (dateStr.includes('T')) {
+        const datePart = dateStr.split('T')[0];
+        return datePart.substring(2);
+    }
+    
+    // Otherwise, try to parse as date and format
+    try {
+        const date = new Date(dateStr);
+        if (!isNaN(date.getTime())) {
+            const isoString = date.toISOString().split('T')[0];
+            return isoString.substring(2);
+        }
+    } catch (e) {
+        // If parsing fails, return original string
+    }
+    
+    return dateStr;
+};

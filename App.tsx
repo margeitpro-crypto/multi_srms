@@ -22,6 +22,7 @@ import PrintAllMarksheetsPage from './pages/print/PrintAllMarksheetsPage';
 
 // Common Authenticated Pages
 import StudentProfilePage from './pages/common/StudentProfilePage';
+import StudentAllProfilePage from './pages/common/StudentAllProfilePage';
 
 // Admin Pages
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
@@ -142,6 +143,12 @@ function AppContent() {
       <Route path="student/:studentId" element={
         <PageTitleProvider>
           <StudentProfilePage />
+        </PageTitleProvider>
+      } />
+      
+      <Route path="students" element={
+        <PageTitleProvider>
+          <StudentAllProfilePage />
         </PageTitleProvider>
       } />
       

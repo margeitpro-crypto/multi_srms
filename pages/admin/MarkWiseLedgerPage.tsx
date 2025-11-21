@@ -63,9 +63,6 @@ const MarkWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
     // State for PDF generation
     const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
     
-    // Remove the useEffect that was updating selectedYear from appSettings
-    // Remove the auto-load useEffect
-
     // Auto-select school if only one school exists and none is selected
     useEffect(() => {
         if (!selectedSchoolId && schools.length === 1) {
@@ -75,6 +72,14 @@ const MarkWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
         }
     }, [schools, school, selectedSchoolId]);
     
+    // Automatically load data when component mounts and when dependencies are ready
+    useEffect(() => {
+        // Only auto-load when we have all required data and haven't loaded yet
+        if (selectedSchoolId && selectedYear && selectedClass && !ledgerData && !isLoading) {
+            handleLoad();
+        }
+    }, [selectedSchoolId, selectedYear, selectedClass, ledgerData, isLoading]);
+
     const handleLoad = () => {
         if (!selectedSchoolId) return;
         setIsLoading(true);

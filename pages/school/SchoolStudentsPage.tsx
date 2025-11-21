@@ -1,26 +1,33 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Table from '../../components/Table';
-import Button from '../../components/Button';
-import Modal from '../../components/Modal';
-import InputField from '../../components/InputField';
-import Select from '../../components/Select';
-import Pagination from '../../components/Pagination';
-import { Student } from '../../types';
+import { useAuth } from '../../context/AuthContext';
+import { useData } from '../../context/DataContext';
 import { useAppContext } from '../../context/AppContext';
+import { usePageTitle } from '../../context/PageTitleContext';
+import { School, Student } from '../../types';
+import Button from '../../components/Button';
+import Select from '../../components/Select';
+import InputField from '../../components/InputField';
+import Table from '../../components/Table';
+import Modal from '../../components/Modal';
+import CSVUploadModal from '../../components/CSVUploadModal';
+import Loader from '../../components/Loader';
+import Pagination from '../../components/Pagination';
+import ConfirmModal from '../../components/ConfirmModal';
+import StudentForm from '../../components/forms/StudentForm';
 import IconButton from '../../components/IconButton';
 import { UserCircleIcon } from '../../components/icons/UserCircleIcon';
 import { PencilIcon } from '../../components/icons/PencilIcon';
 import { TrashIcon } from '../../components/icons/TrashIcon';
-import { usePageTitle } from '../../context/PageTitleContext';
 import { DocumentArrowUpIcon } from '../../components/icons/DocumentArrowUpIcon';
-import CSVUploadModal from '../../components/CSVUploadModal';
-import { useData } from '../../context/DataContext';
-import { useAuth } from '../../context/AuthContext';
-import Loader from '../../components/Loader';
-import StudentForm from '../../components/forms/StudentForm';
-import ConfirmModal from '../../components/ConfirmModal';
 import { studentsApi } from '../../services/dataService';
+import { formatToYYMMDD } from '../../utils/nepaliDateConverter';
+
+// Utility function to format A.D. date from ISO string to YY-MM-DD
+const formatADDate = (isoDateStr: string): string => {
+    if (!isoDateStr) return '';
+    return formatToYYMMDD(isoDateStr);
+};
 
 const SchoolStudentsPage: React.FC<{ isReadOnly?: boolean }> = ({ isReadOnly = false }) => {
   const { setPageTitle } = usePageTitle();
@@ -47,6 +54,13 @@ const SchoolStudentsPage: React.FC<{ isReadOnly?: boolean }> = ({ isReadOnly = f
 
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+
+  // Automatically load data when component mounts and when dependencies change
+  useEffect(() => {
+    if (loggedInSchool && selectedYear && selectedClass) {
+      handleLoad();
+    }
+  }, [loggedInSchool, selectedYear, selectedClass]);
 
   const handleAdd = () => {
     setSelectedStudent(null);
@@ -175,6 +189,63 @@ const SchoolStudentsPage: React.FC<{ isReadOnly?: boolean }> = ({ isReadOnly = f
       addToast('Failed to save students to database. Please try again.', 'error');
     }
   };
+
+  // Function to export student data as CSV
+  const exportStudentsToCSV = () => {
+    if (!filteredStudents || filteredStudents.length === 0) {
+      addToast("No students to export.", "warning");
+      return;
+    }
+
+    // Create CSV content
+    const headers = [
+      "S.N.",
+      "Student ID",
+      "Symbol No",
+      "Registration ID",
+      "Full Name",
+      "Gender",
+      "Class",
+      "DOB (BS)",
+      "DOB (AD)",
+      "Father's Name",
+      "Mother's Name",
+      "Mobile No",
+      "Year"
+    ];
+
+    let csvContent = headers.join(",") + "\n";
+
+    filteredStudents.forEach((student, index) => {
+      const row = [
+        index + 1,
+        student.id,
+        student.symbol_no,
+        student.registration_id,
+        `"${student.name}"`,
+        student.gender,
+        student.grade,
+        student.dob_bs,
+        formatADDate(student.dob),
+        `"${student.father_name}"`,
+        `"${student.mother_name}"`,
+        student.mobile_no,
+        student.year
+      ];
+      csvContent += row.join(",") + "\n";
+    });
+
+    // Create and download CSV file
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `students_${loggedInSchool?.id}_${selectedYear}_grade${selectedClass}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
   
   const filteredStudents = useMemo(() => {
     if (!allStudents || !loggedInSchool) return [];
@@ -213,6 +284,7 @@ const SchoolStudentsPage: React.FC<{ isReadOnly?: boolean }> = ({ isReadOnly = f
     { header: 'Gender', accessor: 'gender' as const, className: 'whitespace-nowrap' },
     { header: 'Class', accessor: 'grade' as const, className: 'whitespace-nowrap' },
     { header: 'Dob Bs', accessor: 'dob_bs' as const, className: 'whitespace-nowrap' },
+    { header: 'Dob Ad', accessor: (student: Student) => formatADDate(student.dob), className: 'whitespace-nowrap' },
     { header: "Father's Name", accessor: 'father_name' as const, className: 'whitespace-nowrap min-w-40' },
     { header: "Mother's Name", accessor: 'mother_name' as const, className: 'whitespace-nowrap min-w-40' },
   ];
@@ -275,6 +347,8 @@ const SchoolStudentsPage: React.FC<{ isReadOnly?: boolean }> = ({ isReadOnly = f
                 {!isReadOnly && (
                     <div className="flex items-center space-x-2">
                         <Button variant="secondary" onClick={() => setIsUploadModalOpen(true)} leftIcon={<DocumentArrowUpIcon className="w-4 h-4" />}>Upload CSV</Button>
+                        <Button variant="secondary" onClick={exportStudentsToCSV}>Export</Button>
+                        <Button onClick={() => navigate('/students')}>AllProfile</Button>
                         <Button onClick={handleAdd}>Add Student</Button>
                     </div>
                 )}

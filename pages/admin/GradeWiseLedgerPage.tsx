@@ -1,13 +1,19 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { usePageTitle } from '../../context/PageTitleContext';
+import { School, Student, Subject } from '../../types';
 import Select from '../../components/Select';
 import Button from '../../components/Button';
-import { School, Student, Subject } from '../../types';
-import { usePageTitle } from '../../context/PageTitleContext';
 import Loader from '../../components/Loader';
+import { useData } from '../../context/DataContext';
 import { PrinterIcon } from '../../components/icons/PrinterIcon';
 import { DocumentArrowDownIcon } from '../../components/icons/DocumentArrowDownIcon';
-// FIX: Use central data context instead of importing mock data from pages.
-import { useData } from '../../context/DataContext';
+import { formatToYYMMDD } from '../../utils/nepaliDateConverter';
+
+// Utility function to format A.D. date from ISO string to YY-MM-DD
+const formatADDate = (isoDateStr: string): string => {
+    if (!isoDateStr) return '';
+    return formatToYYMMDD(isoDateStr);
+};
 
 // Print styles to ensure only the ledger content is printed
 const printStyles = `
@@ -71,6 +77,14 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
         }
     }, [schools, school, selectedSchoolId]);
     
+    // Automatically load data when component mounts and when dependencies are ready
+    useEffect(() => {
+        // Only auto-load when we have all required data and haven't loaded yet
+        if (selectedSchoolId && selectedYear && selectedClass && !ledgerData && !isLoading) {
+            handleLoad();
+        }
+    }, [selectedSchoolId, selectedYear, selectedClass, ledgerData, isLoading]);
+
     const handleLoad = () => {
         if (!selectedSchoolId) return;
         setIsLoading(true);
@@ -134,7 +148,7 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
         
         // Add data rows
         processedLedgerData.students.forEach((student, index) => {
-            csvContent += `${index + 1},${processedLedgerData.school.iemisCode},"${processedLedgerData.school.name}","${student.name}","${student.dob}",${student.symbol_no}`;
+            csvContent += `${index + 1},${processedLedgerData.school.iemisCode},"${processedLedgerData.school.name}","${student.name}","${formatADDate(student.dob)}",${student.symbol_no}`;
             
             // Add subject grades
             processedLedgerData.subjects.forEach(subject => {

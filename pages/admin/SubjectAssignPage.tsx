@@ -34,6 +34,13 @@ const SubjectAssignPage: React.FC<{ school?: School, isReadOnly?: boolean }> = (
     // Add search state for available subjects
     const [searchTerm, setSearchTerm] = useState<string>('');
 
+    // Automatically load data when component mounts and when dependencies change
+    useEffect(() => {
+        if (selectedStudentId) {
+            handleLoad();
+        }
+    }, [selectedStudentId]);
+
     const studentsInSchool = useMemo(() => {
         if (!selectedSchoolId || !allStudents || !selectedYear || !selectedClass) return [];
         return allStudents.filter(student => 

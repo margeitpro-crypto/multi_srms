@@ -20,6 +20,13 @@ import { PencilIcon } from '../../components/icons/PencilIcon';
 import { TrashIcon } from '../../components/icons/TrashIcon';
 import { DocumentArrowUpIcon } from '../../components/icons/DocumentArrowUpIcon';
 import { usePageTitle } from '../../context/PageTitleContext';
+import { formatToYYMMDD } from '../../utils/nepaliDateConverter';
+
+// Utility function to format A.D. date from ISO string to YY-MM-DD
+const formatADDate = (isoDateStr: string): string => {
+    if (!isoDateStr) return '';
+    return formatToYYMMDD(isoDateStr);
+};
 
 const ManageStudentsPage: React.FC = () => {
   const { setPageTitle } = usePageTitle();
@@ -192,6 +199,66 @@ const ManageStudentsPage: React.FC = () => {
     }
   };
 
+  // Function to export student data as CSV
+  const exportStudentsToCSV = () => {
+    if (!filteredStudents || filteredStudents.length === 0) {
+      addToast("No students to export.", "warning");
+      return;
+    }
+
+    // Create CSV content
+    const headers = [
+      "S.N.",
+      "School Code",
+      "Student ID",
+      "Symbol No",
+      "Registration ID",
+      "Full Name",
+      "Gender",
+      "Class",
+      "DOB (BS)",
+      "DOB (AD)",
+      "Father's Name",
+      "Mother's Name",
+      "Mobile No",
+      "Year"
+    ];
+
+    let csvContent = headers.join(",") + "\n";
+
+    filteredStudents.forEach((student, index) => {
+      const school = schools?.find(s => s.id === student.school_id);
+      const row = [
+        index + 1,
+        school?.iemisCode || "N/A",
+        student.id,
+        student.symbol_no,
+        student.registration_id,
+        `"${student.name}"`,
+        student.gender,
+        student.grade,
+        student.dob_bs,
+        formatADDate(student.dob),
+        `"${student.father_name}"`,
+        `"${student.mother_name}"`,
+        student.mobile_no,
+        student.year
+      ];
+      csvContent += row.join(",") + "\n";
+    });
+
+    // Create and download CSV file
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `students_${selectedSchoolId}_${selectedYear}_grade${selectedClass}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const filteredStudents = useMemo(() => {
     if (!allStudents || !selectedSchoolId || !selectedYear || !selectedClass) return [];
     
@@ -237,7 +304,7 @@ const ManageStudentsPage: React.FC = () => {
     { header: 'Gender', accessor: 'gender' as const, className: 'whitespace-nowrap' },
     { header: 'Class', accessor: 'grade' as const, className: 'whitespace-nowrap' },
     { header: 'Dob Bs', accessor: 'dob_bs' as const, className: 'whitespace-nowrap' },
-    { header: 'Dob Ad', accessor: 'dob' as const, className: 'whitespace-nowrap' },
+    { header: 'Dob Ad', accessor: (student: Student) => formatADDate(student.dob), className: 'whitespace-nowrap' },
     { header: "Father's Name", accessor: 'father_name' as const, className: 'whitespace-nowrap min-w-40' },
     { header: "Mother's Name", accessor: 'mother_name' as const, className: 'whitespace-nowrap min-w-40' },
     { header: 'Mobile No', accessor: 'mobile_no' as const, className: 'whitespace-nowrap' },
@@ -310,6 +377,8 @@ const ManageStudentsPage: React.FC = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                     <Button variant="secondary" onClick={() => setIsUploadModalOpen(true)} leftIcon={<DocumentArrowUpIcon className="w-4 h-4" />}>Upload CSV</Button>
+                    <Button variant="secondary" onClick={exportStudentsToCSV}>Export</Button>
+                    <Button onClick={() => navigate('/students')}>AllProfile</Button>
                     <Button onClick={handleAdd}>Add Student</Button>
                 </div>
             </div>

@@ -1,27 +1,124 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useData } from '../../context/DataContext';
 import Button from '../../components/Button';
 import { PrinterIcon } from '../../components/icons/PrinterIcon';
-import { useData } from '../../context/DataContext';
-import { getFinalGradeFromWGPA, getSubjectRemarks, getGradeInfoFromPercentage } from '../../utils/gradeCalculator';
 import { NebLogo } from '../../components/icons/NebLogo';
+import { getFinalGradeFromWGPA, getGradeInfoFromPercentage, getSubjectRemarks } from '../../utils/gradeCalculator';
+import { formatToYYMMDD } from '../../utils/nepaliDateConverter';
+
+// Utility function to convert BS year to approximate AD year
+const convertBsYearToAdYear = (bsYear: string): number => {
+    // Based on the reference data: 2056 BS ≈ 2000 AD
+    // So the difference is approximately 56 years
+    const bsYearNum = parseInt(bsYear, 10);
+    if (isNaN(bsYearNum)) return new Date().getFullYear();
+    return bsYearNum - 56; // Approximate conversion
+};
+
+// Utility function to convert AD date to approximate BS date
+const convertAdDateToBsDate = (adDate: Date): string => {
+    // Reference: 2000-01-01 AD is 2056-09-15 BS
+    const referenceAd = new Date(2000, 0, 1); // January 1, 2000
+    const referenceBsYear = 2056;
+    const referenceBsMonth = 9; // Poush (9th month)
+    const referenceBsDay = 15;
+    
+    // Calculate the difference in days between the given date and reference date
+    const timeDiff = adDate.getTime() - referenceAd.getTime();
+    const daysDiff = Math.floor(timeDiff / (1000 * 3600 * 24));
+    
+    // Approximate conversion:
+    // Add the days difference to the reference BS date
+    // This is a simplified approximation and may not be perfectly accurate
+    let bsYear = referenceBsYear;
+    let bsMonth = referenceBsMonth;
+    let bsDay = referenceBsDay + daysDiff;
+    
+    // Adjust for month overflow/underflow (simplified)
+    // This is a rough approximation - in a real implementation, 
+    // we would need the exact days in each BS month
+    while (bsDay > 30) {
+        bsDay -= 30;
+        bsMonth++;
+        if (bsMonth > 12) {
+            bsMonth = 1;
+            bsYear++;
+        }
+    }
+    
+    while (bsDay <= 0) {
+        bsMonth--;
+        if (bsMonth < 1) {
+            bsMonth = 12;
+            bsYear--;
+        }
+        bsDay += 30; // Approximation
+    }
+    
+    return `${bsYear}-${String(bsMonth).padStart(2, '0')}-${String(bsDay).padStart(2, '0')}`;
+};
 
 // Utility function to format Nepali date from MM/DD/YYYY to YYYY-MM-DD
 const formatNepaliDate = (dateStr: string): string => {
     if (!dateStr) return '';
     
-    // Split the date string by '/'
-    const parts = dateStr.split('/');
+    // If it's already in YYYY-MM-DD format, return as is
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        return dateStr;
+    }
     
-    // Check if we have the expected format (MM/DD/YYYY)
-    if (parts.length === 3) {
-        const [month, day, year] = parts;
-        // Return in YYYY-MM-DD format
+    // If it's in MM/DD/YYYY format, convert to YYYY-MM-DD
+    if (dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+        const [month, day, year] = dateStr.split('/');
         return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     }
     
-    // If format is not as expected, return the original string
     return dateStr;
+};
+
+// Utility function to format A.D. date from ISO string to YY-MM-DD
+const formatADDate = (isoDateStr: string): string => {
+    if (!isoDateStr) return '';
+    return formatToYYMMDD(isoDateStr);
+};
+
+// Utility function to format A.D. date from ISO string to YYYY-MM-DD
+const formatADDateFull = (isoDateStr: string): string => {
+    if (!isoDateStr) return '';
+    
+    // If it's already in YYYY-MM-DD format, return as is
+    if (isoDateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        return isoDateStr;
+    }
+    
+    // If it's in YY-MM-DD format, convert to YYYY-MM-DD
+    if (isoDateStr.match(/^\d{2}-\d{2}-\d{2}$/)) {
+        const currentYear = new Date().getFullYear();
+        const currentCentury = Math.floor(currentYear / 100) * 100;
+        const year = parseInt(isoDateStr.substring(0, 2), 10);
+        // Assume dates are in the current century
+        const fullYear = currentCentury + year;
+        return `${fullYear}${isoDateStr.substring(2)}`;
+    }
+    
+    // If it's an ISO string, extract the date part
+    if (isoDateStr.includes('T')) {
+        return isoDateStr.split('T')[0];
+    }
+    
+    // Otherwise, try to parse as date and format
+    try {
+        const date = new Date(isoDateStr);
+        if (!isNaN(date.getTime())) {
+            const isoString = date.toISOString().split('T')[0];
+            return isoString;
+        }
+    } catch (e) {
+        // If parsing fails, return original string
+    }
+    
+    return isoDateStr;
 };
 
 const PrintMarksheetPage: React.FC = () => {
@@ -132,15 +229,15 @@ const PrintMarksheetPage: React.FC = () => {
                 {/* Header */}
                 <div className="text-center pb-4 relative z-10 border-b-2 border-gray-400">
                     <div className="flex justify-between items-center">
-                        <img src={school.logoUrl} alt="School Logo" className="h-20 w-20 rounded-full object-cover"/>
+                        <NebLogo src="https://upload.wikimedia.org/wikipedia/commons/2/23/Emblem_of_Nepal.svg" className="h-20 w-20" />
                         <div className="flex-grow">
                             <p className="font-bold text-sm">Government of Nepal</p>
-                            <p className="font-bold text-lg text-blue-800">NATIONAL EXAMINATIONS BOARD</p>
-                            <h1 className="text-2xl font-bold text-red-700">{school.name}</h1>
-                            <p className="text-xs font-semibold">{school.municipality}</p>
+                            <p className="font-bold text-lg text-blue-800">SCHOOL EXAMINATION BOARD</p>
+                            <h1 className="text-2xl font-bold text-red-700 uppercase">{school.name}</h1>
+                            <p className="text-xs font-semibold">{school.municipality}, <span className="font-bold">ESTD :</span> {school.estd} </p>
                         </div>
-                        <NebLogo className="h-20 w-20" />
-                    </div>
+                        <img src={school.logoUrl} alt="School Logo" className="h-20 w-20 rounded-full object-cover"/>
+                    </div>                
                      <p className="inline-block bg-gray-800 text-white font-bold tracking-widest px-6 py-1 text-xl mt-2 rounded-sm">GRADE-SHEET</p>
                 </div>
                 
@@ -149,11 +246,11 @@ const PrintMarksheetPage: React.FC = () => {
                     <div className="grid grid-cols-2 gap-x-8 gap-y-1">
                         <div className="flex"><span className="w-28">Name:</span><span className="border-b border-dotted border-black flex-grow px-2">{student.name}</span></div>
                         <div className="flex"><span className="w-28">Symbol No.:</span><span className="border-b border-dotted border-black flex-grow px-2">{student.symbol_no}</span></div>
-                        <div className="flex"><span className="w-28">Date of Birth:</span><span className="border-b border-dotted border-black flex-grow px-2"> {formatNepaliDate(student.dob_bs)} B.S. ({student.dob} A.D.)</span></div>
+                        <div className="flex"><span className="w-28">Date of Birth:</span><span className="border-b border-dotted border-black flex-grow px-2"> {formatNepaliDate(student.dob_bs)} B.S. ({formatADDateFull(student.dob)} A.D.)</span></div>
                         <div className="flex"><span className="w-28">Registration No.:</span><span className="border-b border-dotted border-black flex-grow px-2">{student.registration_id}</span></div>
                     </div>
                      <p className="mt-2 text-justify">
-                        This is to certify that the grades secured by the above student in the annual examination of <strong>Grade {student.grade}</strong> conducted in <strong>{student.year} A.D.</strong> are given below.
+                        This is to certify that the grades secured by the above student in the annual examination of <strong>Grade {student.grade}</strong> conducted in <strong>{student.year} B.S.</strong> (<strong>{convertBsYearToAdYear(student.year.toString()).toString()} A.D.</strong>) are given below.
                      </p>
                 </div>
               
@@ -247,6 +344,19 @@ const PrintMarksheetPage: React.FC = () => {
                         )}
                     </table>
                 </div>
+                <div className="mt-4 text-xs font-semibold relative z-10">
+                    
+                     <p className="mt-1 text-justify" style={{ fontSize: '14px', fontWeight: 'bold' }}>
+                        NOTE: ONE CREDIT HOUR EQUALS 32 CLOCK HOURS.                      
+                     </p>
+
+                     <p className="mt-1 text-justify">
+                        INTERNAL (IN) :THIS COVERS THE PARTICIPATION, PRACTICAL/PROJECT WORKS, COMMUNITY WORKS,INTERNSHIP, PRESENTATIONS TERMINAL EXAMINATIONS.
+                     </p>
+                     <p className="mt-1 text-justify">
+                        THEORY (TH) :THIS COVERS WRITTEN EXTERNAL EXAMINATION.
+                     </p>
+                </div>
 
                 {/* Grading System Legend */}
                 <div className="mt-4 text-xs relative z-10">
@@ -284,7 +394,7 @@ const PrintMarksheetPage: React.FC = () => {
                         <p className="border-t border-black w-32 pt-1 mt-8">{school.checkedBy}</p>
                     </div>
                     <div className="text-center">
-                        <p className="font-bold">Date of Issue: {new Date().toLocaleDateString('en-CA')}</p>
+                        <p className="font-bold">Date of Issue: {convertAdDateToBsDate(new Date())} B.S. ({new Date().toLocaleDateString('en-CA')} A.D.)</p>
                         <p className="border-t border-black w-40 pt-1 mt-8">{school.headTeacherName}</p>
                     </div>
                 </div>
