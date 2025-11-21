@@ -209,11 +209,11 @@ const PrintMarksheetPage: React.FC = () => {
 
         {/* Printable Area */}
         <div className="bg-white p-2 relative shadow-2xl print:shadow-none" id="marksheet">
-            <div className="border-2 border-gray-800 p-4 relative overflow-hidden" style={{borderStyle: 'double'}}>
+            <div className="border-8 border-gray-800 p-4 relative overflow-hidden" style={{borderStyle: 'double'}}>
                 {/* Watermark */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none z-0" aria-hidden="true">
                     <div
-                        className="p-8 text-gray-600 font-bold uppercase"
+                        className="p-0 text-gray-600 font-bold uppercase"
                         style={{
                             fontSize: '0.7rem',
                             lineHeight: 1.5,
@@ -222,7 +222,7 @@ const PrintMarksheetPage: React.FC = () => {
                             filter: 'blur(0.5px)',
                         }}
                     >
-                        {`${school.name.toUpperCase()} `.repeat(250)}
+                        {`${school.name.toUpperCase()} `.repeat(300)}
                     </div>
                 </div>
               
@@ -238,7 +238,7 @@ const PrintMarksheetPage: React.FC = () => {
                         </div>
                         <img src={school.logoUrl} alt="School Logo" className="h-20 w-20 rounded-full object-cover"/>
                     </div>                
-                     <p className="inline-block bg-gray-800 text-white font-bold tracking-widest px-6 py-1 text-xl mt-2 rounded-sm">GRADE-SHEET</p>
+                     <p className="inline-block bg-green-800 text-white font-bold tracking-widest px-6 py-1 text-xl mt-2 rounded-full">GRADE-SHEET</p>
                 </div>
                 
                 {/* Student Info */}
@@ -386,7 +386,7 @@ const PrintMarksheetPage: React.FC = () => {
                 </div>
 
                 {/* Footer */}
-                <div className="mt-16 flex justify-between items-end text-xs relative z-10">
+                <div className="mt-10 flex justify-between items-end text-xs relative z-10">
                     <div className="text-center">
                         <p className="border-t border-black w-32 pt-1 mt-8">{school.preparedBy}</p>
                     </div>

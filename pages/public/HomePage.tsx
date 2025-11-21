@@ -10,8 +10,12 @@ import { UserGroupIcon } from '../../components/icons/UserGroupIcon';
 import { CalculatorIcon } from '../../components/icons/CalculatorIcon';
 import { CheckCircleIcon } from '../../components/icons/CheckCircleIcon';
 import { AcademicCapIcon } from '../../components/icons/AcademicCapIcon';
+import { ComputerDesktopIcon } from '../../components/icons/ComputerDesktopIcon';
+import { BookOpenIcon } from '../../components/icons/BookOpenIcon';
+import { BriefcaseIcon } from '../../components/icons/BriefcaseIcon';
 import { useData } from '../../context/DataContext';
 import { useAppContext } from '../../context/AppContext';
+import Modal from '../../components/Modal'; // Import Modal
 
 interface FeatureCardProps {
     icon: React.ReactNode;
@@ -34,7 +38,7 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, description, col
     </div>
 );
 
-const PricingCard: React.FC<{ plan: string; price: React.ReactNode; students: string; features: string[], isPopular?: boolean, buttonText?: string, delay: string }> = ({ plan, price, students, features, isPopular = false, buttonText = "Choose Plan", delay }) => (
+const PricingCard: React.FC<{ plan: string; price: React.ReactNode; students: string; features: string[], isPopular?: boolean, buttonText?: string, delay: string, onClick?: () => void }> = ({ plan, price, students, features, isPopular = false, buttonText = "Choose Plan", delay, onClick }) => (
     <div className={`relative flex flex-col p-8 rounded-3xl transition-all duration-500 hover:-translate-y-2 animate-slide-in-up ${delay} ${isPopular ? 'bg-white dark:bg-gray-800 ring-4 ring-primary-500/20 shadow-2xl scale-105 z-10' : 'bg-white/80 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200 dark:border-gray-700 shadow-xl hover:shadow-2xl'}`}>
         {isPopular && (
             <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
@@ -68,27 +72,35 @@ const PricingCard: React.FC<{ plan: string; price: React.ReactNode; students: st
         <Button 
             className={`w-full rounded-xl py-3.5 font-bold shadow-lg transition-transform active:scale-95 ${isPopular ? 'shadow-primary-500/30 hover:shadow-primary-500/50' : ''}`} 
             variant={isPopular ? 'primary' : 'secondary'}
+            onClick={onClick}
         >
             {buttonText}
         </Button>
     </div>
 );
 
-const AcknowledgmentCard: React.FC<{ title: string; description: React.ReactNode; role?: string; person?: string; delay: string }> = ({ title, description, role, person, delay }) => (
+const AcknowledgmentCard: React.FC<{ title: string; description: React.ReactNode; role?: string; person?: string; delay: string; imageSrc?: string }> = ({ title, description, role, person, delay, imageSrc }) => (
     <div className={`bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-lg hover:shadow-xl border border-gray-100 dark:border-gray-700 transition-all duration-500 hover:-translate-y-1 h-full flex flex-col text-center items-center animate-slide-in-up ${delay}`}>
-        <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-full flex items-center justify-center text-3xl mb-6 shadow-lg shadow-indigo-500/30 text-white">
-            🏛️
-        </div>
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">{title}</h3>
-        <div className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed flex-grow px-2">
-            {description}
-        </div>
+        {imageSrc ? (
+            <div className="w-24 h-24 mb-6 rounded-full overflow-hidden shadow-lg shadow-indigo-500/30 border-4 border-white dark:border-gray-700 flex-shrink-0">
+                <img src={imageSrc} alt={person || title} className="w-full h-full object-cover" />
+            </div>
+        ) : (
+            <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-full flex items-center justify-center text-3xl mb-6 shadow-lg shadow-indigo-500/30 text-white flex-shrink-0">
+                🏛️
+            </div>
+        )}
         {(person || role) && (
-            <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700 w-full">
+            <div className="mt-1 pt-2 border-t border-gray-100 dark:border-gray-700 w-full">
                 {role && <p className="text-xs text-indigo-500 dark:text-indigo-400 uppercase tracking-wider font-bold mb-1">{role}</p>}
                 {person && <p className="text-lg font-bold text-gray-800 dark:text-white">{person}</p>}
             </div>
         )}
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">{title}</h3>
+        <div className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed flex-grow px-2">
+            {description}
+        </div>
+        
     </div>
 );
 
@@ -97,6 +109,7 @@ const HomePage: React.FC = () => {
     const { addToast } = useAppContext();
     const [activeTestimonial, setActiveTestimonial] = useState(0);
     const navigate = useNavigate();
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     
     // Typing effect state
     const fullText1 = "School's Result";
@@ -107,53 +120,82 @@ const HomePage: React.FC = () => {
     const [typingComplete2, setTypingComplete2] = useState(false);
 
     useEffect(() => {
-        let typeInterval1: any;
-        let typeInterval2: any;
-        let loopInterval: any;
+        const text1 = "School's Result";
+        const text2 = "Management System";
+        
+        let timeout: ReturnType<typeof setTimeout>;
+        let phase = 0; // 0: Type 1, 1: Type 2, 2: Pause, 3: Delete 2, 4: Delete 1, 5: Pause
+        let charIndex = 0;
 
-        const startTyping = () => {
-            // Reset
-            setTypedText1('');
-            setTypedText2('');
-            setTypingComplete1(false);
-            setTypingComplete2(false);
-            
-            let currentIndex1 = 0;
-            typeInterval1 = setInterval(() => {
-                if (currentIndex1 <= fullText1.length) {
-                    setTypedText1(fullText1.slice(0, currentIndex1));
-                    currentIndex1++;
-                } else {
-                    clearInterval(typeInterval1);
-                    setTypingComplete1(true);
-
-                    // Start second line
-                    let currentIndex2 = 0;
-                    typeInterval2 = setInterval(() => {
-                        if (currentIndex2 <= fullText2.length) {
-                            setTypedText2(fullText2.slice(0, currentIndex2));
-                            currentIndex2++;
-                        } else {
-                            clearInterval(typeInterval2);
-                            setTypingComplete2(true);
-                        }
-                    }, 80);
-                }
-            }, 80);
+        const animate = () => {
+            switch (phase) {
+                case 0: // Typing Line 1
+                    if (charIndex <= text1.length) {
+                        setTypedText1(text1.slice(0, charIndex));
+                        charIndex++;
+                        timeout = setTimeout(animate, 100);
+                    } else {
+                        setTypingComplete1(true);
+                        phase = 1;
+                        charIndex = 0;
+                        timeout = setTimeout(animate, 100);
+                    }
+                    break;
+                case 1: // Typing Line 2
+                    if (charIndex <= text2.length) {
+                        setTypedText2(text2.slice(0, charIndex));
+                        charIndex++;
+                        timeout = setTimeout(animate, 100);
+                    } else {
+                        setTypingComplete2(true);
+                        phase = 2;
+                        timeout = setTimeout(animate, 3000); // Wait 3s before deleting
+                    }
+                    break;
+                case 2: // Prepare Delete
+                    phase = 3;
+                    charIndex = text2.length;
+                    animate();
+                    break;
+                case 3: // Delete Line 2
+                    if (charIndex >= 0) {
+                        setTypedText2(text2.slice(0, charIndex));
+                        charIndex--;
+                        timeout = setTimeout(animate, 50); // Deleting speed
+                    } else {
+                        setTypingComplete2(false);
+                        phase = 4;
+                        charIndex = text1.length;
+                        timeout = setTimeout(animate, 100);
+                    }
+                    break;
+                case 4: // Delete Line 1
+                    if (charIndex >= 0) {
+                        setTypedText1(text1.slice(0, charIndex));
+                        charIndex--;
+                        timeout = setTimeout(animate, 50); // Deleting speed
+                    } else {
+                        setTypingComplete1(false);
+                        phase = 5;
+                        timeout = setTimeout(animate, 1000); // Wait 1s before restarting
+                    }
+                    break;
+                case 5: // Restart
+                    phase = 0;
+                    charIndex = 0;
+                    animate();
+                    break;
+            }
         };
 
-        // Run immediately on mount
-        startTyping();
+        animate();
 
-        // Set up loop to repeat every 1 minute (15000 ms)
-        loopInterval = setInterval(startTyping, 15000);
-
-        return () => {
-            clearInterval(typeInterval1);
-            clearInterval(typeInterval2);
-            clearInterval(loopInterval);
-        };
+        return () => clearTimeout(timeout);
     }, []);
+
+    const handlePlanClick = () => {
+        setIsPaymentModalOpen(true);
+    };
 
     return (
         <div className="overflow-x-hidden">
@@ -176,7 +218,7 @@ const HomePage: React.FC = () => {
                         <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-8 leading-[1.1]">
                              {typedText1} <br />
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 via-purple-600 to-pink-600 animate-gradient-x">
-                                {typedText2} !
+                                {typedText2} 
                             </span>
                         </h1>
                         
@@ -202,7 +244,7 @@ const HomePage: React.FC = () => {
             </section>
 
             {/* Features Section */}
-            <section id="features" className="py-32 bg-white dark:bg-gray-900 relative">
+            <section id="features" className="py-16 bg-white dark:bg-gray-900 relative">
                 <div className="container mx-auto px-6">
                     <div className="text-center max-w-3xl mx-auto mb-20">
                          <span className="text-primary-600 font-bold tracking-wider uppercase text-sm">Features</span>
@@ -256,6 +298,27 @@ const HomePage: React.FC = () => {
                             color="from-cyan-400 to-cyan-600"
                             delay="delay-500"
                         />
+                        <FeatureCard 
+                            icon={<ComputerDesktopIcon className="w-8 h-8" />}
+                            title="Technical Stream"
+                            description="Specialized support for technical streams like Computer, Civil, and Electrical Engineering with customizable practical marks."
+                            color="from-orange-400 to-orange-600"
+                            delay="delay-0"
+                        />
+                        <FeatureCard 
+                            icon={<BookOpenIcon className="w-8 h-8" />}
+                            title="Traditional Stream"
+                            description="Dedicated features for Traditional and Sanskrit education, ensuring full compliance with specific curriculum standards."
+                            color="from-rose-400 to-rose-600"
+                            delay="delay-100"
+                        />
+                        <FeatureCard 
+                            icon={<BriefcaseIcon className="w-8 h-8" />}
+                            title="General Faculty Support"
+                            description="Comprehensive tools for Management, Humanities, and Education faculties with flexible subject configurations."
+                            color="from-indigo-400 to-indigo-600"
+                            delay="delay-200"
+                        />
                     </div>
                 </div>
             </section>
@@ -285,6 +348,7 @@ const HomePage: React.FC = () => {
                             students="Up to 500 Students"
                             features={['All Core Features', 'Standard Support', 'Daily Cloud Backup', 'Basic Reporting']}
                             delay="delay-0"
+                            onClick={handlePlanClick}
                         />
                         <PricingCard
                             plan="Pro"
@@ -294,6 +358,7 @@ const HomePage: React.FC = () => {
                             isPopular={true}
                             buttonText="Get Started"
                             delay="delay-100"
+                            onClick={handlePlanClick}
                         />
                         <PricingCard
                             plan="Enterprise"
@@ -301,13 +366,14 @@ const HomePage: React.FC = () => {
                             students="Unlimited Students"
                             features={['All Pro Features', 'Custom Integrations', 'Dedicated Account Manager', 'On-Premise Option', 'Custom Branding']}
                             delay="delay-200"
+                            onClick={handlePlanClick}
                         />
                     </div>
                 </div>
             </section>
 
              {/* Special Acknowledgments Section */}
-             <section className="py-32 bg-gradient-to-b from-white to-indigo-50 dark:from-gray-900 dark:to-gray-800 relative">
+             <section className="py-16 bg-gradient-to-b from-white to-indigo-50 dark:from-gray-900 dark:to-gray-800 relative">
                 <div className="container mx-auto px-6">
                     <div className="text-center max-w-3xl mx-auto mb-20">
                         <div className="inline-block p-3 bg-indigo-100 dark:bg-indigo-900/30 rounded-full mb-4">
@@ -322,13 +388,17 @@ const HomePage: React.FC = () => {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <AcknowledgmentCard 
-                            title="Beldandi Rural Municipality"
+                            title="Phone No & WhatsApp 9827792360"
                             description={
                                 <>
-                                    Our primary and <strong className="text-indigo-600 dark:text-indigo-400">overarching partner</strong>. For their generous support and commitment to advancing education technology across the region.
+                                    Located in <strong>Beldandi Rural Municipality - 5</strong>. Their enthusiastic collaboration and pilot testing were crucial for refining our system.
                                 </>
                             }
-                            delay="delay-0"
+                            role="Call Owner (Winner) Designed & Built By"
+                            person="Man Singh Rana"
+                            imageSrc="/photos/photo2.jpg"
+                            
+                            delay="delay-100"
                         />
                         <AcknowledgmentCard 
                             title="Saraswati Janata Secondary School"
@@ -338,10 +408,12 @@ const HomePage: React.FC = () => {
                                 </>
                             }
                             role="Head Sir"
-                            person="Dependra Budha"
+                            person="Deepak B.C."
+                            imageSrc="https://lh3.googleusercontent.com/pw/AP1GczMLEmnC_K1oTVwLiyrm37Nkkz9mYr6H2WJ9VBiwyYX-hmmt2InJfqkj4g2K1FycJf1VCsauSvRrSFZkl49BXCYXB9sOjSWMKQZ3npwSE3zWNoj-fCc=w1920-h1080"
                             delay="delay-100"
                         />
                          <AcknowledgmentCard 
+                            
                             title="Ganesh Secondary School Bursa"
                             description={
                                 <>
@@ -350,6 +422,7 @@ const HomePage: React.FC = () => {
                             }
                             role="Key Support"
                             person="Janak Bahadur Thapa"
+                            imageSrc="https://lh3.googleusercontent.com/pw/AP1GczPim_xHO_2euH749swydNe8A-TUhVoOePKx_ER5QhymsR9PkNgNMXx2NIFziX1SrIfaQDXyNQBGqbJjPm8DDR6_E3sl9ZtGFbtWrC0V3yb5huJ05dA=w1920-h1080"
                             delay="delay-200"
                         />
                     </div>
@@ -357,7 +430,7 @@ const HomePage: React.FC = () => {
             </section>
 
             {/* About Section */}
-            <section id="about" className="py-32 bg-white dark:bg-gray-900">
+            <section id="about" className="py-10 bg-white dark:bg-gray-900">
                 <div className="container mx-auto px-6">
                     <div className="max-w-5xl mx-auto bg-gray-50 dark:bg-gray-800 rounded-[3rem] p-12 md:p-20 text-center shadow-inner">
                         <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-8">
@@ -379,6 +452,57 @@ const HomePage: React.FC = () => {
                     </div>
                 </div>
             </section>
+            {/* Payment Modal */}
+            <Modal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} title="Subscribe to Plan">
+                <div className="text-center p-6">
+                    <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">Payment Options</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
+                        Scan the QR code below or contact us directly to activate your subscription.
+                    </p>
+                    
+                    <div className="flex flex-col md:flex-row justify-center items-center gap-8 mb-8">
+                        {/* eSewa QR */}
+                        <div className="flex flex-col items-center">
+                            <div className="bg-white p-2 rounded-xl shadow-lg border-4 border-gray-100 dark:border-gray-700 mb-2 transition-transform hover:scale-105">
+                                <img 
+                                    src="https://lh3.googleusercontent.com/pw/AP1GczN-QvEezBXPlzu34SYk5E4H2i0SV0BUUl3JQXnabr8lXT8rdBnT6qZCoeaOdR4A__85GBaPYpHAMblQwrGI6QcxdC0HUkYyKxMgVGDDnsdTlaQUfF4=w1920-h1080" 
+                                    alt="eSewa QR Code" 
+                                    className="w-48 h-48 object-contain"
+                                />
+                            </div>
+                            <span className="inline-block px-3 py-1 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full text-xs font-semibold">
+                                eSewa Accepted
+                            </span>
+                        </div>
+
+                        {/* NMB Bank QR */}
+                        <div className="flex flex-col items-center">
+                            <div className="bg-white p-2 rounded-xl shadow-lg border-4 border-gray-100 dark:border-gray-700 mb-2 transition-transform hover:scale-105">
+                                <img 
+                                    src="https://lh3.googleusercontent.com/pw/AP1GczP9Oh5bIDRugKd-ADA0Qw2mrO028OueR9ZHMc4o-0xjVBE8SksTvbQbbHXVCxcmDFLBMdVOVMNPZZ_EkM3RgIUF6NZyG26tidBj8tXBjRiw5FVNVWE=w1920-h1080" 
+                                    alt="NMB Bank QR Code" 
+                                    className="w-48 h-48 object-contain"
+                                />
+                            </div>
+                            <span className="inline-block px-3 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full text-xs font-semibold">
+                                NMB Bank Accepted
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6 border border-gray-100 dark:border-gray-600">
+                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Contact for Activation</p>
+                        <p className="text-2xl font-extrabold text-primary-600 dark:text-primary-400 tracking-tight">9827792360</p>
+                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mt-1">Call Owner (Winner)</p>
+                    </div>
+                    
+                    <div className="mt-6">
+                        <Button variant="secondary" onClick={() => setIsPaymentModalOpen(false)} className="w-full">
+                            Close
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };

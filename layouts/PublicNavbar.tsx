@@ -14,7 +14,7 @@ const PublicNavbar: React.FC = () => {
     const { appSettings } = useData();
     
     const navLinks = [
-        { to: '/', text: 'Home' },
+        
         { to: '/#features', text: 'Features' },
         { to: '/#pricing', text: 'Pricing' },
         { to: '/portfolio', text: 'Portfolio' },

@@ -5,9 +5,43 @@ import { useData } from '../context/DataContext';
 const Footer: React.FC = () => {
     const { appSettings } = useData();
     
+
+    const navLinks = [
+        { to: '/', text: 'Home' },
+        { to: '/#features', text: 'Features' },
+        { to: '/#pricing', text: 'Pricing' },
+        { to: '/portfolio', text: 'Portfolio' },
+        { to: '/#about', text: 'About' },
+    ];
+
+    const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, to: string) => {
+        if (to.includes('#')) {
+            e.preventDefault();
+            const [path, hash] = to.split('#');
+            // Check if we are already on the target path (ignoring trailing slash differences)
+            const currentPath = location.pathname.endsWith('/') && location.pathname.length > 1 
+                ? location.pathname.slice(0, -1) 
+                : location.pathname;
+            const targetPath = path === '/' ? '' : path; // Normalize for comparison if needed
+
+            // Simple check: if we are on the home page (which corresponds to '/')
+            if (location.pathname === '/' || location.pathname === '') {
+                const targetId = hash;
+                const targetElement = document.getElementById(targetId);
+                if (targetElement) {
+                    targetElement.scrollIntoView({ behavior: 'smooth' });
+                }
+            } else {
+                // Navigate to the route with hash
+                
+            }
+        }
+    };
+    
+    
     return (
         <footer className="bg-white/80 dark:bg-gray-900/90 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 mt-auto">
-            <div className="container mx-auto px-6 py-10">
+            <div className="container mx-auto px-6 py-6">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-6">
                     <div className="text-center md:text-left space-y-2">
                          <h3 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-purple-600">
@@ -20,10 +54,45 @@ const Footer: React.FC = () => {
                             Making education management simpler.
                         </p>
                     </div>
+
+                    {/* Navigation Links */}
+                    <div className="flex flex-wrap justify-center gap-6 md:w-1/3">
+                        {navLinks.map((link) => (
+                            link.to.includes('#') ? (
+                                <a
+                                    key={link.text}
+                                    href={link.to}
+                                    onClick={(e) => handleNavClick(e, link.to)}
+                                    className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors cursor-pointer"
+                                >
+                                    {link.text}
+                                </a>
+                            ) : (
+                                <Link
+                                    key={link.text}
+                                    to={link.to}
+                                    className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                                >
+                                    {link.text}
+                                </Link>
+                            )
+                        ))}
+                    </div>
+                    <a 
+                        href="https://drive.google.com/drive/folders/1xFrbH2IHKwMVX9gLpOJ2DGuBS5WFBtrV"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center md:items-end space-y-3 no-underline text-current"
+                        >
+                        Reg Application Form
+                    </a>
+                                                
+
                     <div className="text-left">
                         <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Contact & WhatsApp</p>
                             <p className="text-sm font-bold text-gray-800 dark:text-gray-200 leading-tight group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">9827792360</p>
-                            </div>
+                    </div>
+                            
 
                     <div className="flex flex-col items-center md:items-end space-y-3">
                          <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Designed & Built By</p>
