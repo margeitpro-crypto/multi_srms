@@ -4,6 +4,7 @@ import { Student } from '../../types';
 import InputField from '../InputField';
 import Select from '../Select';
 import Button from '../Button';
+import { convertBsToAd } from '../../utils/nepaliDateConverter';
 
 interface StudentFormProps {
   student: Partial<Student> | null;
@@ -22,6 +23,14 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, onSave, onClose }) =
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { id, value } = e.target;
     setFormData(prev => ({ ...prev, [id]: value }));
+    
+    // Automatically convert BS date to AD date when BS date changes
+    if (id === 'dob_bs' && value) {
+      const adDate = convertBsToAd(value);
+      if (adDate) {
+        setFormData(prev => ({ ...prev, dob: adDate }));
+      }
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -43,7 +52,26 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, onSave, onClose }) =
           <option>Other</option>
         </Select>
         <InputField id="dob_bs" label="Date of Birth (BS)" onChange={handleChange} value={formData.dob_bs || ''} required />
-        <InputField id="dob" label="Date of Birth (AD)" type="date" onChange={handleChange} value={formData.dob || ''} required />
+        <div className="space-y-1">
+          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+            Date of Birth (AD)
+          </label>
+          {formData.dob_bs && formData.dob ? (
+            <div className="px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-sm">
+              {formData.dob}
+            </div>
+          ) : (
+            <div className="px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-500">
+              Enter BS date to see AD date
+            </div>
+          )}
+          <input 
+            type="hidden" 
+            id="dob" 
+            value={formData.dob || ''} 
+            onChange={handleChange} 
+          />
+        </div>
         <InputField id="father_name" label="Father's Name" onChange={handleChange} value={formData.father_name || ''} required />
         <InputField id="mother_name" label="Mother's Name" onChange={handleChange} value={formData.mother_name || ''} required />
         <InputField id="mobile_no" label="Mobile No" onChange={handleChange} value={formData.mobile_no || ''} />
