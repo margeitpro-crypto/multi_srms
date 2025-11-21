@@ -13,6 +13,7 @@ import { AcademicCapIcon } from '../../components/icons/AcademicCapIcon';
 import { ComputerDesktopIcon } from '../../components/icons/ComputerDesktopIcon';
 import { BookOpenIcon } from '../../components/icons/BookOpenIcon';
 import { BriefcaseIcon } from '../../components/icons/BriefcaseIcon';
+import { EnvelopeIcon } from '../../components/icons/EnvelopeIcon';
 import { useData } from '../../context/DataContext';
 import { useAppContext } from '../../context/AppContext';
 import Modal from '../../components/Modal'; // Import Modal
@@ -79,7 +80,14 @@ const PricingCard: React.FC<{ plan: string; price: React.ReactNode; students: st
     </div>
 );
 
-const AcknowledgmentCard: React.FC<{ title: string; description: React.ReactNode; role?: string; person?: string; delay: string; imageSrc?: string }> = ({ title, description, role, person, delay, imageSrc }) => (
+interface Socials {
+    facebook?: string;
+    youtube?: string;
+    whatsapp?: string;
+    email?: string;
+}
+
+const AcknowledgmentCard: React.FC<{ title: string; description: React.ReactNode; role?: string; person?: string; delay: string; imageSrc?: string; socials?: Socials }> = ({ title, description, role, person, delay, imageSrc, socials }) => (
     <div className={`bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-lg hover:shadow-xl border border-gray-100 dark:border-gray-700 transition-all duration-500 hover:-translate-y-1 h-full flex flex-col text-center items-center animate-slide-in-up ${delay}`}>
         {imageSrc ? (
             <div className="w-24 h-24 mb-6 rounded-full overflow-hidden shadow-lg shadow-indigo-500/30 border-4 border-white dark:border-gray-700 flex-shrink-0">
@@ -100,6 +108,37 @@ const AcknowledgmentCard: React.FC<{ title: string; description: React.ReactNode
         <div className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed flex-grow px-2">
             {description}
         </div>
+        {/* Social Icons */}
+        {socials && (
+            <div className="flex justify-center space-x-4 mt-4">
+                {socials.facebook && (
+                    <a href={socials.facebook} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-blue-600 transition-colors" title="Facebook">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path fillRule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clipRule="evenodd" />
+                        </svg>
+                    </a>
+                )}
+                {socials.youtube && (
+                    <a href={socials.youtube} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-red-600 transition-colors" title="YouTube">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path fillRule="evenodd" d="M19.812 5.418c.861.23 1.538.907 1.768 1.768C21.998 8.746 22 12 22 12s0 3.255-.418 4.814a2.504 2.504 0 0 1-1.768 1.768c-1.56.419-7.814.419-7.814.419s-6.255 0-7.814-.419a2.505 2.505 0 0 1-1.768-1.768C2 15.255 2 12 2 12s0-3.255.417-4.814a2.507 2.507 0 0 1 1.768-1.768C5.744 5 11.998 5 11.998 5s6.255 0 7.814.418ZM15.194 12 10 15V9l5.194 3Z" clipRule="evenodd" />
+                        </svg>
+                    </a>
+                )}
+                {socials.whatsapp && (
+                    <a href={`https://wa.me/${socials.whatsapp}`} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-green-500 transition-colors" title="WhatsApp">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path fillRule="evenodd" d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.669-.698c1.009.552 1.982.842 2.79.842h.002c3.181 0 5.768-2.586 5.768-5.766 0-1.545-.601-2.996-1.693-4.089-1.093-1.093-2.542-1.693-4.076-1.693zm-6.659 11.936-.227-.358c-1.209-1.912-1.274-4.397-.15-6.338 1.115-1.933 3.206-3.167 5.435-3.169 3.423 0 6.209 2.785 6.21 6.209.002 3.422-2.782 6.207-6.206 6.208-.001 0-1.346-.325-2.531-.962l-.335-.177-2.196.575z" clipRule="evenodd" />
+                        </svg>
+                    </a>
+                )}
+                {socials.email && (
+                    <a href={`mailto:${socials.email}`} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors" title="Email">
+                        <EnvelopeIcon className="w-5 h-5" />
+                    </a>
+                )}
+            </div>
+        )}
         
     </div>
 );
@@ -388,7 +427,7 @@ const HomePage: React.FC = () => {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <AcknowledgmentCard 
-                            title="Phone No & WhatsApp 9827792360"
+                            title="School Result Management System"
                             description={
                                 <>
                                     Located in <strong>Beldandi Rural Municipality - 5</strong>. Their enthusiastic collaboration and pilot testing were crucial for refining our system.
@@ -397,8 +436,13 @@ const HomePage: React.FC = () => {
                             role="Call Owner (Winner) Designed & Built By"
                             person="Man Singh Rana"
                             imageSrc="/photos/photo2.jpg"
-                            
                             delay="delay-100"
+                            socials={{
+                                youtube: '#',
+                                facebook: '#',
+                                email: 'margeitpro@gmail.com',
+                                whatsapp: '9827792360'
+                            }}
                         />
                         <AcknowledgmentCard 
                             title="Saraswati Janata Secondary School"
@@ -411,6 +455,12 @@ const HomePage: React.FC = () => {
                             person="Deepak B.C."
                             imageSrc="https://lh3.googleusercontent.com/pw/AP1GczMLEmnC_K1oTVwLiyrm37Nkkz9mYr6H2WJ9VBiwyYX-hmmt2InJfqkj4g2K1FycJf1VCsauSvRrSFZkl49BXCYXB9sOjSWMKQZ3npwSE3zWNoj-fCc=w1920-h1080"
                             delay="delay-100"
+                            socials={{
+                                youtube: '#',
+                                facebook: '#',
+                                email: 'margeitpro@gmail.com',
+                                whatsapp: '9827792360'
+                            }}
                         />
                          <AcknowledgmentCard 
                             
@@ -424,6 +474,12 @@ const HomePage: React.FC = () => {
                             person="Janak Bahadur Thapa"
                             imageSrc="https://lh3.googleusercontent.com/pw/AP1GczPim_xHO_2euH749swydNe8A-TUhVoOePKx_ER5QhymsR9PkNgNMXx2NIFziX1SrIfaQDXyNQBGqbJjPm8DDR6_E3sl9ZtGFbtWrC0V3yb5huJ05dA=w1920-h1080"
                             delay="delay-200"
+                            socials={{
+                                youtube: '#',
+                                facebook: '#',
+                                email: 'margeitpro@gmail.com',
+                                whatsapp: '9827792360'
+                            }}
                         />
                     </div>
                 </div>
