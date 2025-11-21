@@ -79,4 +79,24 @@ router.put('/:id', async (req: Request, res: Response) => {
   }
 });
 
+// DELETE /api/students/:id - Delete a student
+router.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid student ID' });
+    }
+    
+    const deletedStudent = await studentsService.deleteStudent(id);
+    
+    if (!deletedStudent) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+    
+    res.json({ message: 'Student deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete student' });
+  }
+});
+
 export default router;

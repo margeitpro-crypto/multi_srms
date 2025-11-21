@@ -103,6 +103,15 @@ export const studentsApi = {
       console.error(`Error updating student with id ${id}:`, error);
       throw error;
     }
+  },
+  
+  delete: async (id: number): Promise<void> => {
+    try {
+      await api.delete(`/students/${id}`);
+    } catch (error) {
+      console.error(`Error deleting student with id ${id}:`, error);
+      throw error;
+    }
   }
 };
 

@@ -365,6 +365,35 @@ export const studentsService = {
       mother_name: student.mother_name,
       mobile_no: student.mobile_no
     };
+  },
+  
+  // Delete a student
+  async deleteStudent(id: number) {
+    const result = await query('DELETE FROM students WHERE id = $1 RETURNING *', [id]);
+    if (result.rows.length === 0) {
+      return null;
+    }
+    
+    const student = result.rows[0];
+    return {
+      id: student.student_system_id, // Using student_system_id as the frontend id
+      school_id: student.school_id,
+      name: student.name,
+      dob: student.dob,
+      gender: student.gender,
+      grade: student.grade,
+      roll_no: student.roll_no,
+      photo_url: student.photo_url,
+      created_at: student.created_at,
+      year: student.academic_year,
+      symbol_no: student.symbol_no,
+      alph: student.alph,
+      registration_id: student.registration_id,
+      dob_bs: student.dob_bs,
+      father_name: student.father_name,
+      mother_name: student.mother_name,
+      mobile_no: student.mobile_no
+    };
   }
 };
 

@@ -42,8 +42,8 @@ import ManageUserPage from './pages/admin/ManageUserPage';
 
 // School Pages
 import SchoolDashboardPage from './pages/school/SchoolDashboardPage';
-import SchoolStudentsPage from './pages/school/SchoolStudentsPage';
-import MarksEntryPage from './pages/school/MarksEntryPage';
+import SchoolManageStudentsPage from './pages/school/SchoolManageStudentsPage';
+import MarksEntrySchoolPage from './pages/school/MarksEntrySchoolPage';
 import SchoolManageSubjectsPage from './pages/school/SchoolManageSubjectsPage';
 import SchoolSubjectAssignPage from './pages/school/SchoolSubjectAssignPage';
 import SchoolMarkWiseLedgerPage from './pages/school/SchoolMarkWiseLedgerPage';
@@ -129,10 +129,10 @@ function AppContent() {
       <Route path="/school/*" element={<ProtectedRoute requiredRole="school"><DashboardLayout /></ProtectedRoute>}>
         <Route index element={<Navigate to="/school/dashboard" replace />} />
         <Route path="dashboard" element={<SchoolDashboardPage />} />
-        <Route path="students" element={<SchoolStudentsPage />} />
+        <Route path="students" element={<SchoolManageStudentsPage />} />
         <Route path="subjects" element={<SchoolManageSubjectsPage />} />
         <Route path="assign-subjects" element={<SchoolSubjectAssignPage />} />
-        <Route path="marks-entry" element={<MarksEntryPage />} />
+        <Route path="marks-entry" element={<MarksEntrySchoolPage />} />
         <Route path="mark-wise-ledger" element={<SchoolMarkWiseLedgerPage />} />
         <Route path="grade-wise-ledger" element={<SchoolGradeWiseLedgerPage />} />
         <Route path="grade-sheet" element={<SchoolGradeSheetPage />} />

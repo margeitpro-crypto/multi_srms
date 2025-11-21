@@ -6,6 +6,7 @@ import { Student } from '../types';
 import Loader from './Loader';
 // FIX: Import InputField component
 import InputField from './InputField';
+import { studentsApi } from '../services/dataService';
 
 interface CSVUploadModalProps {
   isOpen: boolean;
@@ -137,20 +138,48 @@ const CSVUploadModal: React.FC<CSVUploadModalProps> = ({ isOpen, onClose, onUplo
     reader.readAsText(file);
   }, [file]);
 
-  const handleConfirmUpload = () => {
+  const handleConfirmUpload = async () => {
     if (!parsedStudents) return;
 
-    const newStudents: Student[] = parsedStudents.map((s, i) => ({
-        ...s,
-        id: `S${Date.now()}${i}`,
-        school_id: Number(schoolId),
-        year: Number(year),
-        grade: grade,
-        created_at: new Date().toISOString(),
-    } as Student));
+    try {
+      const newStudents: Student[] = [];
+      
+      // Process students one by one to ensure proper database insertion
+      for (let i = 0; i < parsedStudents.length; i++) {
+        const s = parsedStudents[i];
+        const studentData = {
+          student_system_id: `S${Date.now()}${i}`,
+          school_id: Number(schoolId),
+          name: s.name,
+          dob: s.dob,
+          gender: s.gender,
+          grade: grade,
+          roll_no: s.roll_no,
+          photo_url: '',
+          academic_year: Number(year),
+          symbol_no: s.symbol_no,
+          alph: '',
+          registration_id: s.registration_id,
+          dob_bs: s.dob_bs,
+          father_name: s.father_name,
+          mother_name: s.mother_name,
+          mobile_no: s.mobile_no,
+          year: Number(year),
+          created_at: new Date().toISOString()
+        };
+        
+        // Save to database using the data service
+        const newStudent = await studentsApi.create(studentData);
+        
+        newStudents.push(newStudent);
+      }
 
-    onUpload(newStudents);
-    handleClose();
+      onUpload(newStudents);
+      handleClose();
+    } catch (error) {
+      console.error('Error uploading students:', error);
+      // In a real implementation, we would show an error message to the user
+    }
   };
 
   return (

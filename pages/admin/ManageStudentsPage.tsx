@@ -28,7 +28,7 @@ const formatADDate = (isoDateStr: string): string => {
     return formatToYYMMDD(isoDateStr);
 };
 
-const ManageStudentsPage: React.FC = () => {
+const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = ({ school, isReadOnly = false }) => {
   const { setPageTitle } = usePageTitle();
   const navigate = useNavigate();
   useEffect(() => {
@@ -43,11 +43,18 @@ const ManageStudentsPage: React.FC = () => {
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const { addToast } = useAppContext();
   
-  const [selectedSchoolId, setSelectedSchoolId] = useState<string>('');
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string>(school ? school.id.toString() : '');
   const [selectedYear, setSelectedYear] = useState<string>('2082');
   const [selectedClass, setSelectedClass] = useState<string>('11');
   const [showStudents, setShowStudents] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Effect to update selectedSchoolId when school prop changes
+  useEffect(() => {
+    if (school) {
+      setSelectedSchoolId(school.id.toString());
+    }
+  }, [school]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
@@ -101,11 +108,11 @@ const ManageStudentsPage: React.FC = () => {
             mobile_no: studentData.mobile_no
           };
           
-          // We need to find the database ID for the student
-          // This is a limitation of the current implementation where we're using student_system_id as the frontend ID
-          // In a real application, we would store the database ID separately
-          // For now, we'll update the local state only
+          // Update in database
+          // Note: In a real implementation, we would need to get the database ID for the student
+          // For now, we'll update the local state only as the current API doesn't support updating by student_system_id
           setAllStudents(prev => prev.map(s => s.id === studentData.id ? { ...s, ...studentData } as Student : s));
+          
           addToast(`Student "${studentData.name}" updated successfully!`, 'success');
         }
       } else { // Add new student
@@ -150,16 +157,31 @@ const ManageStudentsPage: React.FC = () => {
     setIsConfirmModalOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (studentToDelete) {
-      setAllStudents(prev => prev.filter(s => s.id !== studentToDelete.id));
-      addToast(`${studentToDelete.name} deleted successfully.`, 'error');
-      setStudentToDelete(null);
+      try {
+        // Find the database ID for the student
+        const studentId = studentToDelete.id;
+        
+        // Delete from database
+        await studentsApi.delete(Number(studentId));
+        
+        // Update local state
+        setAllStudents(prev => prev.filter(s => s.id !== studentToDelete.id));
+        
+        addToast(`${studentToDelete.name} deleted successfully.`, 'success');
+      } catch (error) {
+        console.error('Error deleting student:', error);
+        addToast(`Failed to delete ${studentToDelete.name}. Please try again.`, 'error');
+      } finally {
+        setStudentToDelete(null);
+        setIsConfirmModalOpen(false);
+      }
     }
   };
 
   const handleLoad = () => {
-      if(selectedSchoolId){
+      if(selectedSchoolId || (school && school.id)){
           setShowStudents(true);
           setCurrentPage(1);
       } else {
@@ -185,8 +207,30 @@ const ManageStudentsPage: React.FC = () => {
       // Save each student to the database
       const savedStudents = [];
       for (const student of newStudents) {
+        // Prepare student data for API
+        const studentPayload = {
+          student_system_id: student.id,
+          school_id: student.school_id,
+          name: student.name,
+          dob: student.dob,
+          gender: student.gender,
+          grade: student.grade,
+          roll_no: student.roll_no,
+          photo_url: student.photo_url,
+          academic_year: student.year,
+          symbol_no: student.symbol_no,
+          alph: student.alph,
+          registration_id: student.registration_id,
+          dob_bs: student.dob_bs,
+          father_name: student.father_name,
+          mother_name: student.mother_name,
+          mobile_no: student.mobile_no,
+          year: student.year,
+          created_at: new Date().toISOString()
+        };
+        
         // Save to database - the API expects the frontend Student type
-        const savedStudent = await studentsApi.create(student);
+        const savedStudent = await studentsApi.create(studentPayload);
         savedStudents.push(savedStudent);
       }
       
@@ -314,23 +358,34 @@ const ManageStudentsPage: React.FC = () => {
     <div className="animate-fade-in">
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg mb-6">
          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-            <Select
-              id="school-selector"
-              label="Selected School*"
-              value={selectedSchoolId}
-              onChange={(e) => {
-                  setSelectedSchoolId(e.target.value);
-                  setShowStudents(false);
-              }}
-              containerClassName="md:col-span-2"
-            >
-              <option value="">-- Select a School --</option>
-              {schools?.map(school => (
-                <option key={school.id} value={school.id}>
-                  {school.iemisCode}-{school.name}
-                </option>
-              ))}
-            </Select>
+            {school ? (
+              // If school prop is provided, show school info instead of dropdown
+              <div className="md:col-span-2">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Selected School</label>
+                <div className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md">
+                  {school.iemisCode} - {school.name}
+                </div>
+              </div>
+            ) : (
+              // If no school prop, show the dropdown
+              <Select
+                id="school-selector"
+                label="Selected School*"
+                value={selectedSchoolId}
+                onChange={(e) => {
+                    setSelectedSchoolId(e.target.value);
+                    setShowStudents(false);
+                }}
+                containerClassName="md:col-span-2"
+              >
+                <option value="">-- Select a School --</option>
+                {schools?.map(school => (
+                  <option key={school.id} value={school.id}>
+                    {school.iemisCode}-{school.name}
+                  </option>
+                ))}
+              </Select>
+            )}
 
              <Select
                 id="year-selector"
@@ -375,12 +430,14 @@ const ManageStudentsPage: React.FC = () => {
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
                 </div>
-                <div className="flex items-center space-x-2">
-                    <Button variant="secondary" onClick={() => setIsUploadModalOpen(true)} leftIcon={<DocumentArrowUpIcon className="w-4 h-4" />}>Upload CSV</Button>
-                    <Button variant="secondary" onClick={exportStudentsToCSV}>Export</Button>
-                    <Button onClick={() => navigate('/students')}>AllProfile</Button>
-                    <Button onClick={handleAdd}>Add Student</Button>
-                </div>
+                {!isReadOnly && (
+                  <div className="flex items-center space-x-2">
+                      <Button variant="secondary" onClick={() => setIsUploadModalOpen(true)} leftIcon={<DocumentArrowUpIcon className="w-4 h-4" />}>Upload CSV</Button>
+                      <Button variant="secondary" onClick={exportStudentsToCSV}>Export</Button>
+                      <Button onClick={() => navigate('/students')}>AllProfile</Button>
+                      <Button onClick={handleAdd}>Add Student</Button>
+                  </div>
+                )}
             </div>
 
             <Table<Student>
@@ -392,12 +449,16 @@ const ManageStudentsPage: React.FC = () => {
                   <IconButton size="sm" title="View Profile" onClick={() => handleViewProfile(student.id)}>
                     <UserCircleIcon className="w-5 h-5" />
                   </IconButton>
-                  <IconButton size="sm" onClick={() => handleEdit(student)} title="Edit Student" className="text-blue-500 hover:text-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/50">
-                    <PencilIcon className="w-5 h-5" />
-                  </IconButton>
-                  <IconButton size="sm" onClick={() => handleDelete(student)} title="Delete Student" className="text-red-500 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/50">
-                    <TrashIcon className="w-5 h-5" />
-                  </IconButton>
+                  {!isReadOnly && (
+                    <>
+                      <IconButton size="sm" onClick={() => handleEdit(student)} title="Edit Student" className="text-blue-500 hover:text-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/50">
+                        <PencilIcon className="w-5 h-5" />
+                      </IconButton>
+                      <IconButton size="sm" onClick={() => handleDelete(student)} title="Delete Student" className="text-red-500 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/50">
+                        <TrashIcon className="w-5 h-5" />
+                      </IconButton>
+                    </>
+                  )}
                 </>
                 )}
             />
@@ -409,35 +470,39 @@ const ManageStudentsPage: React.FC = () => {
         </div>
       )}
       
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={selectedStudent ? 'Edit Student' : 'Add New Student'}
-      >
-        <StudentForm student={selectedStudent} onSave={handleSave} onClose={() => setIsModalOpen(false)} />
-      </Modal>
+      {!isReadOnly && (
+        <>
+          <Modal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            title={selectedStudent ? 'Edit Student' : 'Add New Student'}
+          >
+            <StudentForm student={selectedStudent} onSave={handleSave} onClose={() => setIsModalOpen(false)} />
+          </Modal>
 
-      <CSVUploadModal
-        isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
-        onUpload={handleUploadSuccess}
-        schoolId={selectedSchoolId}
-        year={selectedYear}
-        grade={selectedClass}
-      />
+          <CSVUploadModal
+            isOpen={isUploadModalOpen}
+            onClose={() => setIsUploadModalOpen(false)}
+            onUpload={handleUploadSuccess}
+            schoolId={selectedSchoolId || (school ? school.id.toString() : '')}
+            year={selectedYear}
+            grade={selectedClass}
+          />
 
-      <ConfirmModal
-        isOpen={isConfirmModalOpen}
-        onClose={() => {
-          setIsConfirmModalOpen(false);
-          setStudentToDelete(null);
-        }}
-        onConfirm={confirmDelete}
-        title="Confirm Delete"
-        message={`Are you sure you want to delete ${studentToDelete?.name}? This action cannot be undone.`}
-        confirmText="Delete"
-        confirmVariant="danger"
-      />
+          <ConfirmModal
+            isOpen={isConfirmModalOpen}
+            onClose={() => {
+              setIsConfirmModalOpen(false);
+              setStudentToDelete(null);
+            }}
+            onConfirm={confirmDelete}
+            title="Confirm Delete"
+            message={`Are you sure you want to delete ${studentToDelete?.name}? This action cannot be undone.`}
+            confirmText="Delete"
+            confirmVariant="danger"
+          />
+        </>
+      )}
     </div>
   );
 };

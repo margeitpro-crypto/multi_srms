@@ -27,7 +27,7 @@ interface MarksState {
     [studentId: string]: StudentMarksEntry;
 }
 
-const MarksEntryAdminPage: React.FC = () => {
+const MarksEntryAdminPage: React.FC<{ school?: School; isReadOnly?: boolean }> = ({ school, isReadOnly = false }) => {
     const { setPageTitle } = usePageTitle();
     useEffect(() => {
         setPageTitle('Marks Entry');
@@ -37,11 +37,19 @@ const MarksEntryAdminPage: React.FC = () => {
     // FIX: Get global marks state and setter from DataContext
     const { schools, students: MOCK_ADMIN_STUDENTS, subjects: MOCK_SUBJECTS, assignments: MOCK_STUDENT_SUBJECT_ASSIGNMENTS, marks: allMarks, updateStudentMarks, extraCreditAssignments, setAssignments, setExtraCreditAssignments, updateStudentGrades, academicYears, appSettings } = useData();
 
-    const [selectedSchoolId, setSelectedSchoolId] = useState<string>('');
+    const [selectedSchoolId, setSelectedSchoolId] = useState<string>(school ? school.id.toString() : '');
     const [selectedYear, setSelectedYear] = useState('2082');
     const [selectedClass, setSelectedClass] = useState('11');
     const [isLoading, setIsLoading] = useState(false);
-    const [dataLoaded, setDataLoaded] = useState(false);
+    const [isDataLoaded, setIsDataLoaded] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    // Effect to update selectedSchoolId when school prop changes
+    useEffect(() => {
+        if (school) {
+            setSelectedSchoolId(school.id.toString());
+        }
+    }, [school]);
     
     const [students, setStudents] = useState<Student[]>([]);
     const [headerSubjects, setHeaderSubjects] = useState<Subject[]>([]);
@@ -52,12 +60,14 @@ const MarksEntryAdminPage: React.FC = () => {
     const selectedSchool = useMemo(() => schools.find(s => s.id.toString() === selectedSchoolId), [selectedSchoolId, schools]);
 
     const handleLoad = () => {
-        if (!selectedSchoolId) {
+        if (!selectedSchoolId && !school) {
             addToast("Please select a school first.", "warning");
             return;
         }
+        if (isDataLoaded) return; // Prevent reloading if data is already loaded
+        
         setIsLoading(true);
-        setDataLoaded(false);
+        setIsDataLoaded(false);
         setTimeout(() => {
             const schoolId = parseInt(selectedSchoolId, 10);
             const filteredStudents = MOCK_ADMIN_STUDENTS.filter(s => 
@@ -151,7 +161,7 @@ const MarksEntryAdminPage: React.FC = () => {
                     setSelectedStudents(new Set(studentsWithAssignments.map(s => s.id)));
                     
                     setIsLoading(false);
-                    setDataLoaded(true);
+                    setIsDataLoaded(true);
                     addToast(`Loaded ${studentsWithAssignments.length} students with subject assignments for Grade ${selectedClass}.`, 'info');
                 } catch (error: any) {
                     console.error('Error loading student assignments:', error);
@@ -178,6 +188,8 @@ const MarksEntryAdminPage: React.FC = () => {
     };
     
     const handleMarkChange = (studentId: string, subjectId: number, field: keyof Marks, value: string) => {
+        if (isReadOnly) return;
+        
         const numValue = parseInt(value) || 0;
         setMarks(prev => {
             const studentMarks = prev[studentId];
@@ -202,6 +214,8 @@ const MarksEntryAdminPage: React.FC = () => {
     };
 
     const handleAbsenceChange = (studentId: string, isAbsent: boolean) => {
+        if (isReadOnly) return;
+        
         setMarks(prev => ({
             ...prev,
             [studentId]: {
@@ -230,12 +244,22 @@ const MarksEntryAdminPage: React.FC = () => {
         updateStudentGrades(newGrades);
     }, [marks, allMarks, MOCK_SUBJECTS, MOCK_STUDENT_SUBJECT_ASSIGNMENTS, updateStudentGrades]);
     
-    const handleSaveMarks = () => {
-        updateStudentMarks(marks);
-        addToast("Marks submitted successfully!", "success");
+    const handleSaveMarks = async () => {
+        if (isReadOnly || isSubmitting) return;
+        
+        setIsSubmitting(true);
+        try {
+            updateStudentMarks(marks);
+            addToast("Marks submitted successfully!", "success");
+        } catch (error) {
+            addToast("Failed to submit marks. Please try again.", "error");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
     
     const handleDeleteMarks = async () => {
+        if (isReadOnly) return;
         if (!selectedSchoolId) return;
         
         if (window.confirm("Are you sure you want to delete all marks for the selected students? This action cannot be undone.")) {
@@ -312,53 +336,64 @@ const MarksEntryAdminPage: React.FC = () => {
 
     return (
         <div className="animate-fade-in space-y-6">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg space-y-4">
-                <Select
-                    id="school-selector"
-                    label="Select a School to Enter Marks"
-                    value={selectedSchoolId}
-                    onChange={(e) => {
-                        setSelectedSchoolId(e.target.value);
-                        setDataLoaded(false);
-                    }}
-                >
-                    <option value="">-- Select a School --</option>
-                    {schools.map(school => (
-                        <option key={school.id} value={school.id}>
-                            {school.iemisCode}-{school.name}
-                        </option>
-                    ))}
-                </Select>
-                
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end pt-4 border-t dark:border-gray-700">
-                    <div className="md:col-span-2">
-                        <label htmlFor="selectedSchool" className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Selected School<span className="text-red-500">*</span></label>
-                        <div className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-400 truncate">
-                            {selectedSchool ? `${selectedSchool.iemisCode} | ${selectedSchool.name}` : 'N/A'}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                    {school ? (
+                        // If school prop is provided, show school info instead of dropdown
+                        <div className="md:col-span-2">
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Selected School*</label>
+                            <div className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md">
+                                {school.iemisCode} - {school.name}
+                            </div>
                         </div>
-                    </div>
-                    <Select id="year-selector" label="Year*" value={selectedYear} onChange={(e) => {setSelectedYear(e.target.value); setDataLoaded(false);}}>
+                    ) : (
+                        // If no school prop, show the dropdown
+                        <Select
+                            id="school-selector"
+                            label="Selected School*"
+                            value={selectedSchoolId}
+                            onChange={(e) => {
+                                setSelectedSchoolId(e.target.value);
+                                setIsDataLoaded(false);
+                            }}
+                            containerClassName="md:col-span-2"
+                        >
+                            <option value="">-- Select a School --</option>
+                            {schools.map(school => (
+                                <option key={school.id} value={school.id}>
+                                    {school.iemisCode}-{school.name}
+                                </option>
+                            ))}
+                        </Select>
+                    )}
+                    <Select id="year-selector" label="Year*" value={selectedYear} onChange={(e) => {setSelectedYear(e.target.value); setIsDataLoaded(false);}}>
                         {academicYears.filter(y => y.is_active).map(year => (
                             <option key={year.id} value={year.year}>{year.year}</option>
                         ))}
                     </Select>
-                    <Select id="class-selector" label="Class*" value={selectedClass} onChange={(e) => {setSelectedClass(e.target.value); setDataLoaded(false);}}>
-                        <option value="11">11</option>
-                        <option value="12">12</option>
+                    <Select id="class-selector" label="Class*" value={selectedClass} onChange={(e) => {setSelectedClass(e.target.value); setIsDataLoaded(false);}}>
+                        <option value="11">Grade 11</option>
+                        <option value="12">Grade 12</option>
                     </Select>
-                     <Button onClick={handleLoad} disabled={isLoading || !selectedSchoolId} className="w-full">
-                        {isLoading ? <span className="flex items-center"><Loader /> Loading...</span> : 'Load'}
+                     <Button onClick={handleLoad} disabled={isLoading || isDataLoaded || !selectedSchoolId}>
+                        {isLoading ? (
+                            <span className="flex items-center"><Loader /> Loading...</span>
+                        ) : isDataLoaded ? (
+                            'Loaded'
+                        ) : (
+                            'Load'
+                        )}
                      </Button>
                 </div>
             </div>
 
-            {dataLoaded && (
+            {isDataLoaded && (
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg animate-fade-in">
                     <div className="overflow-x-auto p-2">
                         <table className="w-full text-xs text-left border-collapse">
                             <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
                                 <tr>
-                                    <th className="p-2 w-10 text-center sticky left-0 z-20 bg-gray-50 dark:bg-gray-700"><input type="checkbox" checked={isAllSelected} onChange={handleSelectAll} className="rounded" /></th>
+                                    <th className="p-2 w-10 text-center sticky left-0 z-20 bg-gray-50 dark:bg-gray-700"><input type="checkbox" checked={isAllSelected} onChange={handleSelectAll} disabled={isReadOnly} className="rounded" /></th>
                                     <th className="p-2 w-12 sticky left-10 z-20 bg-gray-50 dark:bg-gray-700">S.N</th>
                                     <th className="p-2 min-w-[150px] sticky left-24 z-20 bg-gray-50 dark:bg-gray-700">Student Name</th>
                                     <th className="p-2 min-w-[120px]">Regd. No.</th>
@@ -387,13 +422,13 @@ const MarksEntryAdminPage: React.FC = () => {
 
                                     return (
                                     <tr key={student.id} className={`border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600/50 ${studentMarks.isAbsent ? 'opacity-60 bg-gray-100 dark:bg-gray-700/50' : ''}`}>
-                                        <td className="p-2 text-center sticky left-0 z-10 bg-white dark:bg-gray-800"><input type="checkbox" checked={selectedStudents.has(student.id)} onChange={(e) => handleSelectStudent(student.id, e.target.checked)} className="rounded"/></td>
+                                        <td className="p-2 text-center sticky left-0 z-10 bg-white dark:bg-gray-800"><input type="checkbox" checked={selectedStudents.has(student.id)} onChange={(e) => !isReadOnly && handleSelectStudent(student.id, e.target.checked)} disabled={isReadOnly} className="rounded"/></td>
                                         <td className="p-2 sticky left-10 z-10 bg-white dark:bg-gray-800">{index + 1}</td>
                                         <td className="p-2 font-medium sticky left-24 z-10 bg-white dark:bg-gray-800">{student.name}</td>
                                         <td className="p-2">{student.registration_id}</td>
                                         <td className="p-2">{student.symbol_no}</td>
                                         <td className="p-2 text-center">
-                                            <input type="checkbox" checked={!!studentMarks.isAbsent} onChange={(e) => handleAbsenceChange(student.id, e.target.checked)} className="rounded" />
+                                            <input type="checkbox" checked={!!studentMarks.isAbsent} onChange={(e) => !isReadOnly && handleAbsenceChange(student.id, e.target.checked)} disabled={isReadOnly} className="rounded" />
                                         </td>
                                         
                                         {headerSubjects.map(subject => {
@@ -401,8 +436,8 @@ const MarksEntryAdminPage: React.FC = () => {
                                             const mark = studentMarks[subject.id] as Marks;
                                             return (
                                                 <React.Fragment key={subject.id}>
-                                                    <td className={`p-1 ${!isAssigned && 'bg-gray-50 dark:bg-gray-700/50'}`}><input type="number" disabled={!!studentMarks.isAbsent || !isAssigned} value={isAssigned ? mark?.theory ?? '' : ''} onChange={(e) => handleMarkChange(student.id, subject.id, 'theory', e.target.value)} className="w-full text-center bg-white dark:bg-gray-700 border rounded p-1 disabled:bg-gray-100 dark:disabled:bg-gray-600"/></td>
-                                                    <td className={`p-1 ${!isAssigned && 'bg-gray-50 dark:bg-gray-700/50'}`}><input type="number" disabled={!!studentMarks.isAbsent || !isAssigned} value={isAssigned ? mark?.internal ?? '' : ''} onChange={(e) => handleMarkChange(student.id, subject.id, 'internal', e.target.value)} className="w-full text-center bg-white dark:bg-gray-700 border rounded p-1 disabled:bg-gray-100 dark:disabled:bg-gray-600"/></td>
+                                                    <td className={`p-1 ${!isAssigned && 'bg-gray-50 dark:bg-gray-700/50'}`}><input type="number" disabled={isReadOnly || !!studentMarks.isAbsent || !isAssigned} value={isAssigned ? mark?.theory ?? '' : ''} onChange={(e) => !isReadOnly && handleMarkChange(student.id, subject.id, 'theory', e.target.value)} className="w-full text-center bg-white dark:bg-gray-700 border rounded p-1 disabled:bg-gray-100 dark:disabled:bg-gray-600"/></td>
+                                                    <td className={`p-1 ${!isAssigned && 'bg-gray-50 dark:bg-gray-700/50'}`}><input type="number" disabled={isReadOnly || !!studentMarks.isAbsent || !isAssigned} value={isAssigned ? mark?.internal ?? '' : ''} onChange={(e) => !isReadOnly && handleMarkChange(student.id, subject.id, 'internal', e.target.value)} className="w-full text-center bg-white dark:bg-gray-700 border rounded p-1 disabled:bg-gray-100 dark:disabled:bg-gray-600"/></td>
                                                 </React.Fragment>
                                             );
                                         })}
@@ -410,10 +445,10 @@ const MarksEntryAdminPage: React.FC = () => {
                                         {extraCreditSubject ? (
                                             <>
                                                 <td className="p-1 bg-yellow-50 dark:bg-yellow-900/50" title={extraCreditSubject.name}>
-                                                    <input type="number" disabled={!!studentMarks.isAbsent} value={extraMark?.theory ?? ''} onChange={(e) => handleMarkChange(student.id, extraCreditSubject.id, 'theory', e.target.value)} className="w-full text-center bg-white dark:bg-gray-700 border rounded p-1 disabled:bg-gray-100 dark:disabled:bg-gray-600"/>
+                                                    <input type="number" disabled={isReadOnly || !!studentMarks.isAbsent} value={extraMark?.theory ?? ''} onChange={(e) => !isReadOnly && handleMarkChange(student.id, extraCreditSubject.id, 'theory', e.target.value)} className="w-full text-center bg-white dark:bg-gray-700 border rounded p-1 disabled:bg-gray-100 dark:disabled:bg-gray-600"/>
                                                 </td>
                                                 <td className="p-1 bg-yellow-50 dark:bg-yellow-900/50" title={extraCreditSubject.name}>
-                                                    <input type="number" disabled={!!studentMarks.isAbsent} value={extraMark?.internal ?? ''} onChange={(e) => handleMarkChange(student.id, extraCreditSubject.id, 'internal', e.target.value)} className="w-full text-center bg-white dark:bg-gray-700 border rounded p-1 disabled:bg-gray-100 dark:disabled:bg-gray-600"/>
+                                                    <input type="number" disabled={isReadOnly || !!studentMarks.isAbsent} value={extraMark?.internal ?? ''} onChange={(e) => !isReadOnly && handleMarkChange(student.id, extraCreditSubject.id, 'internal', e.target.value)} className="w-full text-center bg-white dark:bg-gray-700 border rounded p-1 disabled:bg-gray-100 dark:disabled:bg-gray-600"/>
                                                 </td>
                                             </>
                                         ) : (
@@ -434,10 +469,12 @@ const MarksEntryAdminPage: React.FC = () => {
                         </table>
                     </div>
                      <div className="p-4 flex justify-end space-x-2 border-t dark:border-gray-700">
-                        <Button variant="secondary">Save as Draft</Button>
-                        <Button onClick={handleSaveMarks}>Submit Marks</Button>
+                        <Button variant="secondary" disabled={isReadOnly}>Save as Draft</Button>
+                        <Button onClick={handleSaveMarks} disabled={isReadOnly || isSubmitting}>
+                            {isSubmitting ? 'Submitting...' : 'Submit Marks'}
+                        </Button>
                         {selectedStudents.size > 0 && (
-                            <Button variant="danger" onClick={handleDeleteMarks}>
+                            <Button variant="danger" onClick={handleDeleteMarks} disabled={isReadOnly}>
                                 Delete Marks for Selected ({selectedStudents.size})
                             </Button>
                         )}
