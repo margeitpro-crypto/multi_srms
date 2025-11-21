@@ -312,9 +312,7 @@ const SingleMarksheet: React.FC<{ studentId: string }> = ({ studentId }) => {
                                     <td className="border-2 border-black p-1 text-center font-bold align-middle" rowSpan={2}>
                                         {extraCreditFinalGrade}
                                     </td>
-                                    <td className="border-2 border-black p-1 text-center align-middle" rowSpan={2}>
-                                        {extraCreditRemarks}
-                                    </td>
+                                    
                                 </tr>
                                 <tr>
                                     <td className="border-2 border-black p-1 text-center">{extraCreditSubject.internal.subCode}</td>
@@ -335,7 +333,7 @@ const SingleMarksheet: React.FC<{ studentId: string }> = ({ studentId }) => {
                         )}
                     </table>
                 </div>
-                <div className="mt-4 text-xs font-semibold relative z-10">
+                <div className="mt-0 text-xs font-semibold relative z-10">
                     
                      <p className="mt-1 text-justify" style={{ fontSize: '14px', fontWeight: 'bold' }}>
                         NOTE: ONE CREDIT HOUR EQUALS 32 CLOCK HOURS.                      
@@ -375,7 +373,7 @@ const SingleMarksheet: React.FC<{ studentId: string }> = ({ studentId }) => {
                     </table>
                 </div>
 
-                <div className="mt-10 flex justify-between items-end text-xs relative z-10">
+                <div className="mt-4 flex justify-between items-end text-xs relative z-10">
                     <div className="text-center">
                         <p className="border-t border-black w-32 pt-1 mt-8">{school.preparedBy}</p>
                     </div>
