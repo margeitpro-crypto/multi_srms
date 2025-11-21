@@ -19,28 +19,20 @@ const MarkWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
     useEffect(() => {
         setPageTitle('Mark Wise Ledger');
     }, [setPageTitle]);
-
+    
+    // FIX: Get data from the central DataContext, including assignments.
     const { schools, students: allStudents, subjects: allSubjects, marks: allMarks, assignments, academicYears, marksRefreshTrigger, appSettings } = useData();
 
     const [selectedSchoolId, setSelectedSchoolId] = useState<string>(school?.id.toString() || '');
-    const [selectedYear, setSelectedYear] = useState(appSettings.academicYear);
+    const [selectedYear, setSelectedYear] = useState('2082');
     const [selectedClass, setSelectedClass] = useState('11');
     
     const [isLoading, setIsLoading] = useState(false);
     const [ledgerData, setLedgerData] = useState<LedgerData | null>(null);
     
-    // Update selectedYear when appSettings.academicYear changes
-    useEffect(() => {
-        setSelectedYear(appSettings.academicYear);
-    }, [appSettings.academicYear]);
-    
-    // Auto-load data when school, year, or class changes
-    useEffect(() => {
-        if (selectedSchoolId) {
-            handleLoad();
-        }
-    }, [selectedSchoolId, selectedYear, selectedClass]);
-    
+    // Remove the useEffect that was updating selectedYear from appSettings
+    // Remove the auto-load useEffect
+
     // Auto-select school if only one school exists and none is selected
     useEffect(() => {
         if (!selectedSchoolId && schools.length === 1) {
@@ -64,7 +56,7 @@ const MarkWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                 setLedgerData({ school: currentSchool, students, subjects });
             }
             setIsLoading(false);
-        }, 500); // Reduced delay for better UX
+        }, 100); // Reduced delay for better UX
     };
     
     // Memoize the ledger data to prevent unnecessary re-renders

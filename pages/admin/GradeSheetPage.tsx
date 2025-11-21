@@ -21,7 +21,7 @@ const GradeSheetPage: React.FC<{ school?: School }> = ({ school }) => {
     const navigate = useNavigate();
     const { addToast } = useAppContext();
     // FIX: Get data from the central DataContext.
-    const { schools: MOCK_SCHOOLS, students: MOCK_ADMIN_STUDENTS, academicYears, marksRefreshTrigger } = useData();
+    const { schools: MOCK_SCHOOLS, students: MOCK_ADMIN_STUDENTS, academicYears, marksRefreshTrigger, appSettings } = useData();
 
     const [selectedSchoolId, setSelectedSchoolId] = useState<string>(school?.id.toString() || '');
     const [selectedYear, setSelectedYear] = useState('2082');
@@ -37,7 +37,7 @@ const GradeSheetPage: React.FC<{ school?: School }> = ({ school }) => {
         if (selectedSchoolId && selectedYear && selectedClass) {
             handleLoad();
         }
-    }, [marksRefreshTrigger]); // Add marksRefreshTrigger as dependency
+    }, [marksRefreshTrigger, selectedSchoolId, selectedYear, selectedClass]); // Add marksRefreshTrigger as dependency
 
     const handleLoad = () => {
         if (!selectedSchoolId) return;
@@ -49,7 +49,7 @@ const GradeSheetPage: React.FC<{ school?: School }> = ({ school }) => {
             );
             setLoadedStudents(students);
             setIsLoading(false);
-        }, 1000);
+        }, 100);
     };
 
     const handleResultClick = (studentId: string) => {

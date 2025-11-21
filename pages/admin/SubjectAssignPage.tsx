@@ -20,7 +20,7 @@ const SubjectAssignPage: React.FC<{ school?: School, isReadOnly?: boolean }> = (
     const { addToast } = useAppContext();
 
     const [selectedSchoolId, setSelectedSchoolId] = useState<string>(school?.id.toString() || '');
-    const [selectedYear, setSelectedYear] = useState<string>(appSettings.academicYear);
+    const [selectedYear, setSelectedYear] = useState<string>('2082');
     const [selectedClass, setSelectedClass] = useState<string>('11');
     const [selectedStudentId, setSelectedStudentId] = useState<string>('');
     const [showAssigner, setShowAssigner] = useState<boolean>(false);
@@ -33,11 +33,6 @@ const SubjectAssignPage: React.FC<{ school?: School, isReadOnly?: boolean }> = (
     
     // Add search state for available subjects
     const [searchTerm, setSearchTerm] = useState<string>('');
-
-    // Update selectedYear when appSettings.academicYear changes
-    useEffect(() => {
-        setSelectedYear(appSettings.academicYear);
-    }, [appSettings.academicYear]);
 
     const studentsInSchool = useMemo(() => {
         if (!selectedSchoolId || !allStudents || !selectedYear || !selectedClass) return [];

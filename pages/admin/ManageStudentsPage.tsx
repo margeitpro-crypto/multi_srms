@@ -37,7 +37,7 @@ const ManageStudentsPage: React.FC = () => {
   const { addToast } = useAppContext();
   
   const [selectedSchoolId, setSelectedSchoolId] = useState<string>('');
-  const [selectedYear, setSelectedYear] = useState<string>(appSettings.academicYear);
+  const [selectedYear, setSelectedYear] = useState<string>('2082');
   const [selectedClass, setSelectedClass] = useState<string>('11');
   const [showStudents, setShowStudents] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,11 +45,6 @@ const ManageStudentsPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
   const PLAN_LIMITS = { Basic: 500, Pro: 2000, Enterprise: Infinity };
-
-  // Update selectedYear when appSettings.academicYear changes
-  useEffect(() => {
-    setSelectedYear(appSettings.academicYear);
-  }, [appSettings.academicYear]);
 
   const handleAdd = () => {
     setSelectedStudent(null);
@@ -232,11 +227,11 @@ const ManageStudentsPage: React.FC = () => {
   const columns = [
     { header: 'S.N.', accessor: (item: Student, index: number) => (currentPage - 1) * ITEMS_PER_PAGE + index + 1, className: 'whitespace-nowrap' },
     { header: 'Iemis No', accessor: (student: Student) => schools?.find(s => s.id === student.school_id)?.iemisCode || 'N/A', className: 'whitespace-nowrap' },
-    { header: 'School', accessor: (student: Student) => schools?.find(s => s.id === student.school_id)?.name || 'N/A', className: 'whitespace-nowrap min-w-48' },
-    { header: 'Year', accessor: 'year' as const, className: 'whitespace-nowrap' },
+
+    
     { header: 'Student Id', accessor: 'id' as const, className: 'whitespace-nowrap' },
     { header: 'Sym No', accessor: 'symbol_no' as const, className: 'whitespace-nowrap' },
-    { header: 'Alph', accessor: 'alph' as const, className: 'whitespace-nowrap' },
+   
     { header: 'Reg Id', accessor: 'registration_id' as const, className: 'whitespace-nowrap' },
     { header: 'Full Name', accessor: 'name' as const, className: 'whitespace-nowrap min-w-40' },
     { header: 'Gender', accessor: 'gender' as const, className: 'whitespace-nowrap' },

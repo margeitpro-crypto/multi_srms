@@ -26,23 +26,11 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
     const { schools, students: allStudents, subjects: allSubjects, grades: allGrades, assignments, academicYears, gradesRefreshTrigger, appSettings } = useData();
 
     const [selectedSchoolId, setSelectedSchoolId] = useState<string>(school?.id.toString() || '');
-    const [selectedYear, setSelectedYear] = useState(appSettings.academicYear);
+    const [selectedYear, setSelectedYear] = useState('2082');
     const [selectedClass, setSelectedClass] = useState('11');
     
     const [isLoading, setIsLoading] = useState(false);
     const [ledgerData, setLedgerData] = useState<LedgerData | null>(null);
-    
-    // Update selectedYear when appSettings.academicYear changes
-    useEffect(() => {
-        setSelectedYear(appSettings.academicYear);
-    }, [appSettings.academicYear]);
-    
-    // Auto-load data when school, year, or class changes
-    useEffect(() => {
-        if (selectedSchoolId) {
-            handleLoad();
-        }
-    }, [selectedSchoolId, selectedYear, selectedClass]);
     
     // Auto-select school if only one school exists and none is selected
     useEffect(() => {
@@ -67,7 +55,7 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                 setLedgerData({ school: currentSchool, students, subjects });
             }
             setIsLoading(false);
-        }, 500); // Reduced delay for better UX
+        }, 100); // Reduced delay for better UX
     };
     
     // Memoize the ledger data to prevent unnecessary re-renders

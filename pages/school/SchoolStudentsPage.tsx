@@ -33,7 +33,7 @@ const SchoolStudentsPage: React.FC<{ isReadOnly?: boolean }> = ({ isReadOnly = f
   const { loggedInSchool } = useAuth();
   const { addToast } = useAppContext();
   
-  const [selectedYear, setSelectedYear] = useState<string>(appSettings.academicYear);
+  const [selectedYear, setSelectedYear] = useState<string>('2082');
   const [selectedClass, setSelectedClass] = useState<string>('11');
   const [showStudents, setShowStudents] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -44,11 +44,6 @@ const SchoolStudentsPage: React.FC<{ isReadOnly?: boolean }> = ({ isReadOnly = f
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
   const PLAN_LIMITS = { Basic: 500, Pro: 2000, Enterprise: Infinity };
-
-  // Update selectedYear when appSettings.academicYear changes
-  useEffect(() => {
-    setSelectedYear(appSettings.academicYear);
-  }, [appSettings.academicYear]);
 
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
@@ -203,10 +198,6 @@ const SchoolStudentsPage: React.FC<{ isReadOnly?: boolean }> = ({ isReadOnly = f
     );
   }, [allStudents, loggedInSchool, selectedYear, selectedClass, searchQuery]);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedYear, selectedClass, searchQuery]);
-  
   const totalPages = Math.ceil(filteredStudents.length / ITEMS_PER_PAGE);
   const paginatedStudents = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;

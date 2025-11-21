@@ -41,7 +41,7 @@ const MarksEntryPage: React.FC<{ school?: School }> = ({ school }) => {
     const isReadOnly = schoolPageVisibility?.marksEntry === 'read-only';
     const schoolToDisplay = school || loggedInSchool;
 
-    const [selectedYear, setSelectedYear] = useState(appSettings.academicYear);
+    const [selectedYear, setSelectedYear] = useState('2082');
     const [selectedClass, setSelectedClass] = useState('11');
     const [isLoading, setIsLoading] = useState(false);
     const [dataLoaded, setDataLoaded] = useState(false);
@@ -52,15 +52,12 @@ const MarksEntryPage: React.FC<{ school?: School }> = ({ school }) => {
     
     const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
 
-    // Update selectedYear when appSettings.academicYear changes
-    useEffect(() => {
-        setSelectedYear(appSettings.academicYear);
-    }, [appSettings.academicYear]);
-
     const handleLoad = () => {
         if (!schoolToDisplay) return;
         setIsLoading(true);
         setDataLoaded(false);
+        
+        // Use a small delay to ensure state is updated
         setTimeout(() => {
             const filteredStudents = MOCK_ADMIN_STUDENTS.filter(s => 
                 s.school_id === schoolToDisplay.id &&
@@ -164,7 +161,7 @@ const MarksEntryPage: React.FC<{ school?: School }> = ({ school }) => {
             };
             
             loadAssignments();
-        }, 1000);
+        }, 100);
     };
 
     const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {

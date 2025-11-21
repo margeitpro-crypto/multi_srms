@@ -71,7 +71,7 @@ const SchoolProfileCard: React.FC<SchoolProfileCardProps> = ({ school, totalStud
 const SchoolDashboardPage: React.FC<{ school?: School }> = ({ school }) => {
   const { setPageTitle } = usePageTitle();
   const { loggedInSchool } = useAuth();
-  const { students, grades, subjects, assignments } = useData();
+  const { students, grades, subjects, assignments, appSettings } = useData();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -99,7 +99,7 @@ const SchoolDashboardPage: React.FC<{ school?: School }> = ({ school }) => {
       };
     }
 
-    const currentYear = '2082';
+    const currentYear = appSettings.academicYear || '2082';
     const schoolStudents = students.filter(s => s.school_id === schoolToDisplay.id && s.year.toString() === currentYear);
 
     const totalStudents = schoolStudents.length;
@@ -179,7 +179,7 @@ const SchoolDashboardPage: React.FC<{ school?: School }> = ({ school }) => {
 
 
   const stats = [
-    { title: `Total Students (${'2082'})`, value: schoolStats.totalStudents, icon: <UserGroupIcon className="w-8 h-8 text-white" />, color: 'bg-blue-500', description: schoolStats.studentBreakdown },
+    { title: `Total Students (${appSettings.academicYear || '2082'})`, value: schoolStats.totalStudents, icon: <UserGroupIcon className="w-8 h-8 text-white" />, color: 'bg-blue-500', description: schoolStats.studentBreakdown },
     { title: 'Average GPA', value: schoolStats.averageGpa, icon: <AcademicCapIcon className="w-8 h-8 text-white" />, color: 'bg-green-500' },
     { title: "'NG' Students", value: schoolStats.ngStudentCount, icon: <ExclamationCircleIcon className="w-8 h-8 text-white" />, color: 'bg-red-500' },
   ];
