@@ -1,9 +1,3 @@
-
-
-
-
-
-
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Button from '../../components/Button';
@@ -11,6 +5,24 @@ import { PrinterIcon } from '../../components/icons/PrinterIcon';
 import { useData } from '../../context/DataContext';
 import { getFinalGradeFromWGPA, getSubjectRemarks, getGradeInfoFromPercentage } from '../../utils/gradeCalculator';
 import { NebLogo } from '../../components/icons/NebLogo';
+
+// Utility function to format Nepali date from MM/DD/YYYY to YYYY-MM-DD
+const formatNepaliDate = (dateStr: string): string => {
+    if (!dateStr) return '';
+    
+    // Split the date string by '/'
+    const parts = dateStr.split('/');
+    
+    // Check if we have the expected format (MM/DD/YYYY)
+    if (parts.length === 3) {
+        const [month, day, year] = parts;
+        // Return in YYYY-MM-DD format
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+    
+    // If format is not as expected, return the original string
+    return dateStr;
+};
 
 const PrintMarksheetPage: React.FC = () => {
   const { studentId } = useParams();
@@ -137,7 +149,7 @@ const PrintMarksheetPage: React.FC = () => {
                     <div className="grid grid-cols-2 gap-x-8 gap-y-1">
                         <div className="flex"><span className="w-28">Name:</span><span className="border-b border-dotted border-black flex-grow px-2">{student.name}</span></div>
                         <div className="flex"><span className="w-28">Symbol No.:</span><span className="border-b border-dotted border-black flex-grow px-2">{student.symbol_no}</span></div>
-                        <div className="flex"><span className="w-28">Date of Birth:</span><span className="border-b border-dotted border-black flex-grow px-2">{student.dob} ({student.dob_bs} BS)</span></div>
+                        <div className="flex"><span className="w-28">Date of Birth:</span><span className="border-b border-dotted border-black flex-grow px-2"> {formatNepaliDate(student.dob_bs)} B.S. ({student.dob} A.D.)</span></div>
                         <div className="flex"><span className="w-28">Registration No.:</span><span className="border-b border-dotted border-black flex-grow px-2">{student.registration_id}</span></div>
                     </div>
                      <p className="mt-2 text-justify">

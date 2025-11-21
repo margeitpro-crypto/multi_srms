@@ -222,7 +222,7 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                                     
                                     <th rowSpan={2} className="border p-2 dark:border-gray-600">School Code</th>
                                     <th rowSpan={2} className="border p-2 dark:border-gray-600 min-w-32">Student Name</th>
-                                    <th rowSpan={2} className="border p-2 dark:border-gray-600 min-w-24">DOB</th>
+                                    
 
                                     <th rowSpan={2} className="border p-2 dark:border-gray-600">Symbol Number</th>
                                     {processedLedgerData.subjects.map(subject => (
@@ -247,7 +247,7 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
 
                                             <td className="border p-2 dark:border-gray-600">{processedLedgerData.school.iemisCode}</td>
                                             <td className="border p-2 dark:border-gray-600">{student.name}</td>
-                                            <td className="border p-2 dark:border-gray-600">{student.dob}</td>
+                                            
 
                                             <td className="border p-2 dark:border-gray-600">{student.symbol_no}</td>
                                             {processedLedgerData.subjects.map(subject => {
