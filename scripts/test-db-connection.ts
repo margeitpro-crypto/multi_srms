@@ -11,8 +11,8 @@ async function testConnection() {
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432'),
     user: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'postgres',
-    database: process.env.DB_NAME || 'multi_srms',
+    password: process.env.DB_PASS || '',  // Use DB_PASS to match .env
+    database: process.env.DB_NAME || 'multi_srms_new',  // Use the correct database name
   });
 
   try {

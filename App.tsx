@@ -26,7 +26,6 @@ import PrintAllAdmitCardsPage from './pages/print/PrintAllAdmitCardsPage';
 // Common Authenticated Pages
 import StudentProfilePage from './pages/common/StudentProfilePage';
 import StudentAllProfilePage from './pages/common/StudentAllProfilePage';
-import StudentAllProfilesPage from './pages/common/StudentAllProfilesPage';
 
 // Admin Pages
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
@@ -161,7 +160,7 @@ function AppContent() {
       
       <Route path="student/all-profiles" element={
         <PageTitleProvider>
-          <StudentAllProfilesPage />
+          <StudentAllProfilePage />
         </PageTitleProvider>
       } />
       

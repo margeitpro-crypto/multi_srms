@@ -21,36 +21,39 @@ async function initializeDbPool() {
   }
 }
 
-import { QueryResult } from 'pg';
+import { Pool, QueryResult } from 'pg';
+import logger from './logger';
 
-// Generic database query function
+// Create a PostgreSQL connection pool
+const pool = new Pool({
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || '5432'),
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASS || 'root', // Default to 'root' password
+  database: process.env.DB_NAME || 'multi_srms_new',
+  max: 20, // Maximum number of clients in the pool
+  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+  connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
+});
+
+// Generic query function
 export async function query(text: string, params?: any[]): Promise<QueryResult> {
-  // Initialize the pool if not already done
-  if (!poolInitialized) {
-    console.log('Initializing database pool...');
-    await initializeDbPool();
-  }
-  
-  if (dbPool) {
-    try {
-      console.log('Executing query:', text, params || []);
-      const result = await dbPool.query(text, params);
-      console.log('Query executed successfully, rows returned:', result.rowCount);
-      return result;
-    } catch (err) {
-      console.error('Database query error:', err);
-      throw err;
-    }
-  } else {
-    // Mock implementation when database is not available
-    console.warn('Database not configured, returning mock response for query:', text);
-    return {
-      rows: [],
-      rowCount: 0,
-      command: '',
-      oid: 0,
-      fields: []
-    } as unknown as QueryResult;
+  try {
+    const start = Date.now();
+    const res = await pool.query(text, params);
+    const duration = Date.now() - start;
+    logger.info('Executed query', { 
+      query: text, 
+      duration: `${duration}ms`, 
+      rowCount: res.rowCount 
+    });
+    return res;
+  } catch (error) {
+    logger.error('Database query error', { 
+      query: text, 
+      error: (error as Error).message 
+    });
+    throw error;
   }
 }
 
@@ -117,6 +120,7 @@ export const schoolsService = {
       );
       
       const school = result.rows[0];
+      logger.info('Created new school', { schoolId: school.id, schoolName: school.name });
       return {
         id: school.id,
         iemisCode: school.iemis_code,
@@ -133,7 +137,7 @@ export const schoolsService = {
         subscriptionPlan: school.subscription_plan
       };
     } catch (error) {
-      console.error('Database error creating school:', error);
+      logger.error('Database error creating school:', error);
       throw error;
     }
   },

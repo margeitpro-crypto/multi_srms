@@ -1,0 +1,12 @@
+{
+  "healthCheckInterval": 30000,
+  "alertThresholds": {
+    "cpuUsage": 80,
+    "memoryUsage": 80,
+    "responseTime": 5000
+  },
+  "notification": {
+    "email": "admin@multi_srms.com",
+    "slackWebhook": ""
+  }
+}

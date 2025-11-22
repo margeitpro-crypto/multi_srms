@@ -1,20 +1,44 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
+import logger from './logger';
 
 dotenv.config();
 
-// Create a transporter using Gmail SMTP
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER || 'your_email@gmail.com',
-    pass: process.env.EMAIL_PASS || 'your_app_password'
-  }
-});
+// Create a transporter based on environment
+let transporter: nodemailer.Transporter;
+
+if (process.env.EMAIL_SERVICE === 'ethereal') {
+  // For testing, we'll create a new Ethereal account each time
+  transporter = nodemailer.createTransport({
+    host: 'smtp.ethereal.email',
+    port: 587,
+    secure: false,
+    auth: {
+      user: process.env.EMAIL_USER || '',
+      pass: process.env.EMAIL_PASS || ''
+    }
+  });
+} else {
+  // Production transporter using Gmail SMTP
+  transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER || 'your_email@gmail.com',
+      pass: process.env.EMAIL_PASS || 'your_app_password'
+    }
+  });
+}
 
 // Send OTP email
 export const sendOtpEmail = async (email: string, otp: string): Promise<boolean> => {
   try {
+    // Skip sending emails in test environment
+    if (process.env.NODE_ENV === 'test') {
+      logger.info(`[TEST MODE] Would send OTP ${otp} to ${email}`);
+      logger.info(`[TEST MODE] In production, this would be sent via ${process.env.EMAIL_SERVICE || 'gmail'}`);
+      return true;
+    }
+
     const mailOptions = {
       from: process.env.EMAIL_USER || 'your_email@gmail.com',
       to: email,
@@ -36,11 +60,28 @@ export const sendOtpEmail = async (email: string, otp: string): Promise<boolean>
     };
 
     await transporter.sendMail(mailOptions);
+    logger.info(`OTP email sent successfully to ${email}`);
     return true;
   } catch (error) {
-    console.error('Error sending OTP email:', error);
+    logger.error('Error sending OTP email:', error);
     return false;
   }
 };
 
-export default { sendOtpEmail };
+// Function to create a test email account for Ethereal
+export const createTestAccount = async () => {
+  if (process.env.EMAIL_SERVICE === 'ethereal') {
+    try {
+      const testAccount = await nodemailer.createTestAccount();
+      logger.info('Ethereal Test Account Created:');
+      logger.info('User:', testAccount.user);
+      logger.info('Pass:', testAccount.pass);
+      return testAccount;
+    } catch (error) {
+      logger.error('Failed to create Ethereal test account:', error);
+    }
+  }
+  return null;
+};
+
+export default { sendOtpEmail, createTestAccount };

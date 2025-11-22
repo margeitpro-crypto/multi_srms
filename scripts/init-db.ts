@@ -31,9 +31,9 @@ class DatabaseInitializer {
     this.config = {
       host: process.env.DB_HOST || 'localhost',
       port: parseInt(process.env.DB_PORT || '5432'),
-      database: process.env.DB_NAME || 'multi_srms',
+      database: process.env.DB_NAME || 'multi_srms_new',
       user: process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASSWORD || 'postgres'
+      password: process.env.DB_PASS || 'root'  // Use DB_PASS and default to 'root'
     };
   }
 

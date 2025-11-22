@@ -1,5 +1,7 @@
 import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
+import logger from './services/logger';
 import schoolsRouter from './routes/schools';
 import studentsRouter from './routes/students';
 import subjectsRouter from './routes/subjects';
@@ -30,6 +32,18 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: {
+    error: 'Too many requests from this IP, please try again later.'
+  }
+});
+
+// Apply rate limiting to all requests
+app.use(limiter);
+
 // Middleware
 app.use(express.json());
 
@@ -52,6 +66,7 @@ app.use('/api/otp', otpRouter);
 
 // Health check endpoint
 app.get('/api/health', (req: Request, res: Response) => {
+  logger.info('Health check endpoint accessed');
   res.json({
     status: 'OK',
     message: 'API is running successfully'
@@ -59,7 +74,7 @@ app.get('/api/health', (req: Request, res: Response) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  logger.info(`Server is running on port ${PORT}`);
 });
 
 export default app;

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { createUser, getUserByIemisCode, getAllUsers, updateUser, deleteUser, verifyPassword, getUserById, getUserByEmail, getUsersBySchoolId, updateUserPassword } from '../services/userService';
+import logger from '../services/logger';
 
 const router = Router();
 
@@ -11,9 +12,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'multi_srms_secret_key';
 router.get('/', async (req: Request, res: Response) => {
   try {
     const users = await getAllUsers();
+    logger.info('Fetched all users', { count: users.length });
     res.json(users);
   } catch (err) {
-    console.error('Error fetching users:', err);
+    logger.error('Error fetching users:', err);
     res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
@@ -27,9 +29,10 @@ router.get('/school/:schoolId', async (req: Request, res: Response) => {
     }
     
     const users = await getUsersBySchoolId(schoolId);
+    logger.info('Fetched users by school ID', { schoolId, count: users.length });
     res.json(users);
   } catch (err) {
-    console.error('Error fetching users by school ID:', err);
+    logger.error('Error fetching users by school ID:', err);
     res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
@@ -44,12 +47,14 @@ router.get('/:id', async (req: Request, res: Response) => {
     
     const user = await getUserById(id);
     if (!user) {
+      logger.warn('User not found', { userId: id });
       return res.status(404).json({ error: 'User not found' });
     }
     
+    logger.info('Fetched user by ID', { userId: id });
     res.json(user);
   } catch (err) {
-    console.error('Error fetching user:', err);
+    logger.error('Error fetching user:', err);
     res.status(500).json({ error: 'Failed to fetch user' });
   }
 });
@@ -67,6 +72,7 @@ router.post('/', async (req: Request, res: Response) => {
     // Check if user already exists by IEMIS code
     const existingUserByIemis = await getUserByIemisCode(iemis_code);
     if (existingUserByIemis) {
+      logger.warn('User with IEMIS Code already exists', { iemisCode: iemis_code });
       return res.status(409).json({ error: 'User with this IEMIS Code already exists' });
     }
     
@@ -74,15 +80,17 @@ router.post('/', async (req: Request, res: Response) => {
     if (email) {
       const existingUserByEmail = await getUserByEmail(email);
       if (existingUserByEmail) {
+        logger.warn('User with email already exists', { email });
         return res.status(409).json({ error: 'User with this email already exists' });
       }
     }
     
     // Create new user
     const newUser = await createUser({ iemis_code, email, password, role, school_id });
+    logger.info('Created new user', { userId: newUser.id, iemisCode: newUser.iemis_code });
     res.status(201).json(newUser);
   } catch (err: any) {
-    console.error('Error creating user:', err);
+    logger.error('Error creating user:', err);
     if (err.code === '23505') {
       // Handle unique constraint violation
       if (err.detail && err.detail.includes('iemis_code')) {
@@ -107,12 +115,14 @@ router.put('/:id', async (req: Request, res: Response) => {
     const updatedUser = await updateUser(id, { iemis_code, email, role, school_id });
     
     if (!updatedUser) {
+      logger.warn('User not found for update', { userId: id });
       return res.status(404).json({ error: 'User not found' });
     }
     
+    logger.info('Updated user', { userId: id });
     res.json(updatedUser);
   } catch (err: any) {
-    console.error('Error updating user:', err);
+    logger.error('Error updating user:', err);
     if (err.code === '23505') {
       // Handle unique constraint violation
       if (err.detail && err.detail.includes('iemis_code')) {
@@ -136,12 +146,14 @@ router.delete('/:id', async (req: Request, res: Response) => {
     const deletedUser = await deleteUser(id);
     
     if (!deletedUser) {
+      logger.warn('User not found for deletion', { userId: id });
       return res.status(404).json({ error: 'User not found' });
     }
     
+    logger.info('Deleted user', { userId: id });
     res.json({ message: 'User deleted successfully' });
   } catch (err) {
-    console.error('Error deleting user:', err);
+    logger.error('Error deleting user:', err);
     res.status(500).json({ error: 'Failed to delete user' });
   }
 });
@@ -161,11 +173,13 @@ router.post('/login', async (req: Request, res: Response) => {
     if (email) {
       user = await getUserByEmail(email);
       if (!user) {
+        logger.warn('Login failed - invalid email', { email });
         return res.status(401).json({ error: 'Invalid credentials' });
       }
     } else if (iemisCode) {
       user = await getUserByIemisCode(iemisCode);
       if (!user) {
+        logger.warn('Login failed - invalid IEMIS code', { iemisCode });
         return res.status(401).json({ error: 'Invalid credentials' });
       }
     }
@@ -178,6 +192,7 @@ router.post('/login', async (req: Request, res: Response) => {
     // Verify password
     const isPasswordValid = await verifyPassword(password, user.password_hash);
     if (!isPasswordValid) {
+      logger.warn('Login failed - invalid password', { userId: user.id });
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
@@ -194,6 +209,8 @@ router.post('/login', async (req: Request, res: Response) => {
       { expiresIn: '24h' }
     );
     
+    logger.info('User login successful', { userId: user.id, role: user.role });
+    
     // Return token and user info
     res.json({ 
       message: 'Login successful',
@@ -207,7 +224,7 @@ router.post('/login', async (req: Request, res: Response) => {
       }
     });
   } catch (err) {
-    console.error('Error during login:', err);
+    logger.error('Error during login:', err);
     res.status(500).json({ error: 'Login failed' });
   }
 });
@@ -238,24 +255,28 @@ router.post('/change-password', async (req: Request, res: Response) => {
     // Get the current user
     const user = await getUserById(userId);
     if (!user) {
+      logger.warn('User not found for password change', { userId });
       return res.status(404).json({ error: 'User not found' });
     }
     
     // Verify current password
     const isCurrentPasswordValid = await verifyPassword(currentPassword, user.password_hash);
     if (!isCurrentPasswordValid) {
+      logger.warn('Password change failed - invalid current password', { userId });
       return res.status(401).json({ error: 'Current password is incorrect' });
     }
     
     // Update password
     const updatedUser = await updateUserPassword(userId, newPassword);
     if (!updatedUser) {
+      logger.error('Failed to update password', { userId });
       return res.status(500).json({ error: 'Failed to update password' });
     }
     
+    logger.info('Password changed successfully', { userId });
     res.json({ message: 'Password changed successfully' });
   } catch (err) {
-    console.error('Error changing password:', err);
+    logger.error('Error changing password:', err);
     res.status(500).json({ error: 'Failed to change password' });
   }
 });
