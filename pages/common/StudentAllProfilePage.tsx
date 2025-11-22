@@ -34,7 +34,8 @@ const StudentAllProfilePage: React.FC = () => {
   };
 
   return (
-    <div className="animate-fade-in max-w-7xl mx-auto">
+    // Changed max-w-7xl to max-w-4xl to match StudentProfilePage
+    <div className="animate-fade-in max-w-4xl mx-auto">
         {/* Action Buttons - Hidden when printing */}
         <div className="flex justify-between items-center mb-4 print:hidden">
             <Button variant="secondary" size="sm" onClick={handleBack} leftIcon={<ArrowLeftIcon className="w-4 h-4" />}>
@@ -53,6 +54,7 @@ const StudentAllProfilePage: React.FC = () => {
                 const assignedSubjects = MOCK_SUBJECTS.filter(s => assignedSubjectIds.includes(s.id));
                 
                 return (
+                    // Added transition-all and duration-300 to match StudentProfilePage
                     <div key={student.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl print:shadow-none print:rounded-none print:border-0 print:p-0 print:break-after-page">
                         {/* Header Section with Student Info */}
                         <div className="bg-gradient-to-r from-primary-600 to-primary-800 p-4 print:p-3">
@@ -215,7 +217,7 @@ const StudentAllProfilePage: React.FC = () => {
                 .print\\:hidden {
                     display: none !important;
                 }
-                .max-w-7xl {
+                .max-w-4xl {
                     max-width: 100% !important;
                 }
                 .animate-fade-in {

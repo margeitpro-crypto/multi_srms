@@ -187,6 +187,18 @@ CREATE TABLE academic_years (
 );
 
 -- =============================================
+-- Table: otp
+-- Purpose: Stores one-time passwords for password reset functionality.
+-- =============================================
+CREATE TABLE otp (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    otp VARCHAR(6) NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =============================================
 -- Indexes for Performance Optimization
 -- =============================================
 -- Indexes on foreign keys and frequently queried columns to speed up joins and searches.
@@ -198,6 +210,8 @@ CREATE INDEX idx_student_subject_assignments_student_id ON student_subject_assig
 CREATE INDEX idx_extra_credit_assignments_student_id ON extra_credit_assignments(student_id);
 CREATE INDEX idx_student_marks_student_id_year ON student_marks(student_id, academic_year);
 CREATE INDEX idx_application_settings_key ON application_settings(key);
+CREATE INDEX idx_otp_email ON otp(email);
+CREATE INDEX idx_otp_expires_at ON otp(expires_at);
 
 -- =============================================
 -- Trigger for automatic `updated_at` timestamp
@@ -231,7 +245,6 @@ SELECT apply_updated_at_trigger('subjects');
 SELECT apply_updated_at_trigger('student_marks');
 SELECT apply_updated_at_trigger('application_settings');
 SELECT apply_updated_at_trigger('academic_years');
-
 
 -- =============================================
 -- End of Schema

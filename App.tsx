@@ -15,6 +15,7 @@ import HomePage from './pages/public/HomePage';
 import PortfolioPage from './pages/public/PortfolioPage';
 import LoginPage from './pages/auth/LoginPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 
 // Print Pages
 import PrintMarksheetPage from './pages/print/PrintMarksheetPage';
@@ -95,6 +96,7 @@ function AppContent() {
         <Route index element={<PublicOnlyRoute><HomePage /></PublicOnlyRoute>} />
         <Route path="login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
         <Route path="forgot-password" element={<PublicOnlyRoute><ForgotPasswordPage /></PublicOnlyRoute>} />
+        <Route path="reset-password" element={<PublicOnlyRoute><ResetPasswordPage /></PublicOnlyRoute>} />
       </Route>
       
       {/* Portfolio page without header and footer */}
@@ -103,13 +105,13 @@ function AppContent() {
           <PortfolioPage />
         </PageTitleProvider>
       } />
-
+      
       {/* Print routes don't need a layout */}
       <Route path="/print-marksheet/:studentId" element={<PrintMarksheetPage />} />
       <Route path="/print-all-marksheets" element={<PrintAllMarksheetsPage />} />
       <Route path="/print-admit-card/:studentId" element={<PrintAdmitCardPage />} />
       <Route path="/print-all-admit-cards" element={<PrintAllAdmitCardsPage />} />
-
+      
       {/* Admin Routes */}
       <Route path="/admin/*" element={<ProtectedRoute requiredRole="admin"><DashboardLayout /></ProtectedRoute>}>
         <Route index element={<Navigate to="/admin/dashboard" replace />} />
@@ -129,7 +131,7 @@ function AppContent() {
         <Route path="settings" element={<AdminSettingsPage />} />
         <Route path="users" element={<ManageUserPage />} />
       </Route>
-
+      
       {/* School Routes */}
       <Route path="/school/*" element={<ProtectedRoute requiredRole="school"><DashboardLayout /></ProtectedRoute>}>
         <Route index element={<Navigate to="/school/dashboard" replace />} />

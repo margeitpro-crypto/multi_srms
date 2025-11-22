@@ -1,5 +1,4 @@
 import express, { Application, Request, Response } from 'express';
-import dotenv from 'dotenv';
 import cors from 'cors';
 import schoolsRouter from './routes/schools';
 import studentsRouter from './routes/students';
@@ -10,9 +9,7 @@ import marksRouter from './routes/marks';
 import academicYearsRouter from './routes/academicYears';
 import applicationSettingsRouter from './routes/applicationSettings';
 import excelUploadRouter from './routes/excelUpload';
-
-// Load environment variables
-dotenv.config();
+import otpRouter from './routes/otpRoutes';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3002; // Changed to 3002 as per project configuration
@@ -51,6 +48,7 @@ app.use('/api/marks', marksRouter);
 app.use('/api/academic-years', academicYearsRouter);
 app.use('/api/application-settings', applicationSettingsRouter);
 app.use('/api/excel', excelUploadRouter);
+app.use('/api/otp', otpRouter);
 
 // Health check endpoint
 app.get('/api/health', (req: Request, res: Response) => {
@@ -60,10 +58,8 @@ app.get('/api/health', (req: Request, res: Response) => {
   });
 });
 
-// Start server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
-  console.log(`API URL: http://localhost:${PORT}`);
 });
 
 export default app;

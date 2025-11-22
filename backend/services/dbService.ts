@@ -669,11 +669,58 @@ export const marksService = {
   }
 };
 
+// OTP service
+export const otpService = {
+  // Create a new OTP for a user
+  async createOtp(email: string, otp: string) {
+    // Delete any existing OTPs for this email
+    await query('DELETE FROM otp WHERE email = $1', [email]);
+    
+    // Insert the new OTP with 5-minute expiry
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+    const result = await query(
+      'INSERT INTO otp (email, otp, expires_at) VALUES ($1, $2, $3) RETURNING *',
+      [email, otp, expiresAt]
+    );
+    
+    return result.rows[0];
+  },
+  
+  // Verify an OTP for a user
+  async verifyOtp(email: string, otp: string) {
+    const result = await query(
+      'SELECT id, expires_at FROM otp WHERE email = $1 AND otp = $2',
+      [email, otp]
+    );
+    
+    if (result.rows.length === 0) {
+      return { valid: false, message: 'Invalid OTP' };
+    }
+    
+    const otpRecord = result.rows[0];
+    const now = new Date();
+    
+    if (new Date(otpRecord.expires_at) < now) {
+      // Delete expired OTP
+      await query('DELETE FROM otp WHERE id = $1', [otpRecord.id]);
+      return { valid: false, message: 'OTP has expired' };
+    }
+    
+    return { valid: true, message: 'OTP verified successfully' };
+  },
+  
+  // Delete an OTP after use
+  async deleteOtp(email: string, otp: string) {
+    await query('DELETE FROM otp WHERE email = $1 AND otp = $2', [email, otp]);
+  }
+};
+
 export default {
   query,
   schoolsService,
   studentsService,
   subjectsService,
   subjectAssignmentsService,
-  marksService
+  marksService,
+  otpService
 };

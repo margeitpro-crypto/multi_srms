@@ -124,6 +124,7 @@ class DatabaseInitializer {
       await client.query('DROP TABLE IF EXISTS users CASCADE');
       await client.query('DROP TABLE IF EXISTS schools CASCADE');
       await client.query('DROP TABLE IF EXISTS subjects CASCADE');
+      await client.query('DROP TABLE IF EXISTS otp CASCADE');
       await client.query('DROP TYPE IF EXISTS subscription_plan, school_status, student_gender, user_role CASCADE');
       console.log('✓ Existing tables and types dropped');
 
