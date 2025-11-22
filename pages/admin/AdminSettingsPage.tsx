@@ -15,6 +15,7 @@ import Loader from '../../components/Loader';
 import { SchoolPageVisibility, PagePermission } from '../../types';
 import YearSetup from '../../components/YearSetup';
 import dataService from '../../services/dataService';
+import api from '../../services/api';
 
 const GeneralSettings = () => {
     const { addToast } = useAppContext();
@@ -280,19 +281,101 @@ const GradingSettings = () => {
 };
 
 const SecuritySettings = () => {
+    const { addToast } = useAppContext();
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handlePasswordChange = async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        // Validation
+        if (!currentPassword) {
+            addToast("Please enter your current password", "warning");
+            return;
+        }
+        
+        if (!newPassword) {
+            addToast("Please enter a new password", "warning");
+            return;
+        }
+        
+        if (newPassword.length < 6) {
+            addToast("New password must be at least 6 characters long", "warning");
+            return;
+        }
+        
+        if (newPassword !== confirmPassword) {
+            addToast("New passwords do not match", "warning");
+            return;
+        }
+        
+        if (currentPassword === newPassword) {
+            addToast("New password must be different from current password", "warning");
+            return;
+        }
+        
+        setIsLoading(true);
+        
+        try {
+            // Call API to change password
+            const response = await api.post<{ message: string }>('/users/change-password', {
+                currentPassword,
+                newPassword
+            });
+            
+            // Reset form
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
+            
+            addToast(response.data.message, "success");
+        } catch (error: any) {
+            console.error('Error changing password:', error);
+            const errorMessage = error.response?.data?.error || "Failed to change password. Please try again.";
+            addToast(errorMessage, "error");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
-        <div className="space-y-6">
+        <form onSubmit={handlePasswordChange} className="space-y-6">
             <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Change Password</h3>
-            <InputField id="currentPass" label="Current Password" type="password" />
-            <InputField id="newPass" label="New Password" type="password" />
-            <InputField id="confirmPass" label="Confirm New Password" type="password" />
+            <InputField 
+                id="currentPass" 
+                label="Current Password" 
+                type="password" 
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+            />
+            <InputField 
+                id="newPass" 
+                label="New Password" 
+                type="password" 
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+            />
+            <InputField 
+                id="confirmPass" 
+                label="Confirm New Password" 
+                type="password" 
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+            />
              <div className="flex justify-end">
-                <Button>Update Password</Button>
+                <Button type="submit" disabled={isLoading}>
+                    {isLoading ? <span className="flex items-center"><Loader className="mr-2" /> Updating...</span> : 'Update Password'}
+                </Button>
             </div>
             <hr className="dark:border-gray-600"/>
              <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Security Options</h3>
              <ToggleSwitch label="Enable Two-Factor Authentication (2FA)" enabled={false} onChange={() => {}} />
-        </div>
+        </form>
     );
 };
 

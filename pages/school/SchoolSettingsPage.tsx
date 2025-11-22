@@ -103,18 +103,105 @@ const PaymentDetailsSettings: React.FC<{ school: School, isAdminView: boolean, i
 
 
 const SecuritySettings: React.FC<{ isReadOnly: boolean }> = ({ isReadOnly }) => {
+    const { addToast } = useAppContext();
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handlePasswordChange = async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        // Validation
+        if (!currentPassword) {
+            addToast("Please enter your current password", "warning");
+            return;
+        }
+        
+        if (!newPassword) {
+            addToast("Please enter a new password", "warning");
+            return;
+        }
+        
+        if (newPassword.length < 6) {
+            addToast("New password must be at least 6 characters long", "warning");
+            return;
+        }
+        
+        if (newPassword !== confirmPassword) {
+            addToast("New passwords do not match", "warning");
+            return;
+        }
+        
+        if (currentPassword === newPassword) {
+            addToast("New password must be different from current password", "warning");
+            return;
+        }
+        
+        setIsLoading(true);
+        
+        try {
+            // Call API to change password
+            const response = await api.post<{ message: string }>('/users/change-password', {
+                currentPassword,
+                newPassword
+            });
+            
+            // Reset form
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
+            
+            addToast(response.data.message, "success");
+        } catch (error: any) {
+            console.error('Error changing password:', error);
+            const errorMessage = error.response?.data?.error || "Failed to change password. Please try again.";
+            addToast(errorMessage, "error");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
-        <div className="space-y-6">
+        <form onSubmit={handlePasswordChange} className="space-y-6">
             <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Change Password</h3>
             <div className="max-w-md">
-                <InputField id="currentPass" label="Current Password" type="password" disabled={isReadOnly} />
-                <InputField id="newPass" label="New Password" type="password" containerClassName="mt-4" disabled={isReadOnly} />
-                <InputField id="confirmPass" label="Confirm New Password" type="password" containerClassName="mt-4" disabled={isReadOnly} />
+                <InputField 
+                    id="currentPass" 
+                    label="Current Password" 
+                    type="password" 
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    disabled={isReadOnly}
+                    required
+                />
+                <InputField 
+                    id="newPass" 
+                    label="New Password" 
+                    type="password" 
+                    containerClassName="mt-4"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    disabled={isReadOnly}
+                    required
+                />
+                <InputField 
+                    id="confirmPass" 
+                    label="Confirm New Password" 
+                    type="password" 
+                    containerClassName="mt-4"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    disabled={isReadOnly}
+                    required
+                />
             </div>
              <div className="flex justify-start pt-4 border-t dark:border-gray-600">
-                <Button disabled={isReadOnly}>Update Password</Button>
+                <Button type="submit" disabled={isReadOnly || isLoading}>
+                    {isLoading ? <span className="flex items-center"><Loader className="mr-2" /> Updating...</span> : 'Update Password'}
+                </Button>
             </div>
-        </div>
+        </form>
     );
 };
 

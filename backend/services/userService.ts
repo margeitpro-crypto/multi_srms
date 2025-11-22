@@ -117,6 +117,20 @@ export async function updateUser(id: number, userData: Partial<{
   return result.rows[0] || null;
 }
 
+// Update user password
+export async function updateUserPassword(id: number, newPassword: string): Promise<User | null> {
+  // Hash the new password
+  const saltRounds = 10;
+  const password_hash = await bcrypt.hash(newPassword, saltRounds);
+  
+  const result = await query(
+    `UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
+    [password_hash, id]
+  );
+  
+  return result.rows[0] || null;
+}
+
 // Delete user
 export async function deleteUser(id: number): Promise<User | null> {
   const result = await query('DELETE FROM users WHERE id = $1 RETURNING *', [id]);
@@ -141,6 +155,7 @@ export default {
   getUserById,
   getUsersBySchoolId,
   updateUser,
+  updateUserPassword,
   deleteUser,
   getAllUsers,
   verifyPassword
