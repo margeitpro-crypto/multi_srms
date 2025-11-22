@@ -108,12 +108,16 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
             mobile_no: studentData.mobile_no
           };
           
-          // Update in database
-          // Note: In a real implementation, we would need to get the database ID for the student
-          // For now, we'll update the local state only as the current API doesn't support updating by student_system_id
-          setAllStudents(prev => prev.map(s => s.id === studentData.id ? { ...s, ...studentData } as Student : s));
-          
-          addToast(`Student "${studentData.name}" updated successfully!`, 'success');
+          // Get the database ID for the student
+          const dbId = await studentsApi.getDatabaseIdBySystemId(studentData.id);
+          if (dbId) {
+            // Update in database
+            const updatedStudent = await studentsApi.update(dbId, studentPayload);
+            setAllStudents(prev => prev.map(s => s.id === studentData.id ? updatedStudent : s));
+            addToast(`Student "${studentData.name}" updated successfully!`, 'success');
+          } else {
+            addToast('Failed to update student. Student not found in database.', 'error');
+          }
         }
       } else { // Add new student
         // Prepare student data for API
@@ -160,16 +164,19 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
   const confirmDelete = async () => {
     if (studentToDelete) {
       try {
-        // Find the database ID for the student
-        const studentId = studentToDelete.id;
-        
-        // Delete from database
-        await studentsApi.delete(Number(studentId));
-        
-        // Update local state
-        setAllStudents(prev => prev.filter(s => s.id !== studentToDelete.id));
-        
-        addToast(`${studentToDelete.name} deleted successfully.`, 'success');
+        // Get the database ID for the student
+        const dbId = await studentsApi.getDatabaseIdBySystemId(studentToDelete.id);
+        if (dbId) {
+          // Delete from database
+          await studentsApi.delete(dbId);
+          
+          // Update local state
+          setAllStudents(prev => prev.filter(s => s.id !== studentToDelete.id));
+          
+          addToast(`${studentToDelete.name} deleted successfully.`, 'success');
+        } else {
+          addToast(`Failed to delete ${studentToDelete.name}. Student not found in database.`, 'error');
+        }
       } catch (error) {
         console.error('Error deleting student:', error);
         addToast(`Failed to delete ${studentToDelete.name}. Please try again.`, 'error');

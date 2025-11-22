@@ -13,7 +13,17 @@
     "init:app-settings": "tsx scripts/init-app-settings.ts",
     "test:auth": "tsx scripts/test-auth-system.ts",
     "test:new-auth": "tsx scripts/test-new-auth-system.ts",
-    "add:admin": "tsx scripts/add-admin-user.ts"
+    "add:admin": "tsx scripts/add-admin-user.ts",
+    "anonymize:data": "tsx scripts/anonymize-data.ts",
+    "import:anonymized-data": "tsx scripts/import-anonymized-data.ts",
+    "test:anonymized-data": "tsx scripts/test-with-anonymized-data.ts",
+    "setup:test-env": "tsx scripts/setup-test-environment.ts",
+    "test-db-connection": "tsx scripts/test-db-connection.ts",
+    "populate-db": "tsx scripts/populate-db.ts",
+    "check-schools": "tsx scripts/check-schools.ts",
+    "check-students": "tsx scripts/check-students.ts",
+    "add-school": "tsx scripts/add-school.ts",
+    "add-subjects": "tsx scripts/add-subjects.ts"
   },
   "dependencies": {
     "@types/cors": "^2.8.19",

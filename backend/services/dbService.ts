@@ -292,9 +292,9 @@ export const studentsService = {
           mother_name, mobile_no
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *`,
         [
-          studentData.id, studentData.school_id, studentData.name, studentData.dob,
+          studentData.student_system_id, studentData.school_id, studentData.name, studentData.dob,
           studentData.gender, studentData.grade, studentData.roll_no, studentData.photo_url,
-          studentData.year, studentData.symbol_no, studentData.alph, studentData.registration_id,
+          studentData.academic_year, studentData.symbol_no, studentData.alph, studentData.registration_id,
           studentData.dob_bs, studentData.father_name, studentData.mother_name, studentData.mobile_no
         ]
       );

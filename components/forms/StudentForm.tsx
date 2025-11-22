@@ -1,10 +1,10 @@
-
 import React, { useState } from 'react';
 import { Student } from '../../types';
 import InputField from '../InputField';
 import Select from '../Select';
 import Button from '../Button';
 import { convertBsToAd } from '../../utils/nepaliDateConverter';
+import { formatToYYYYMMDD, isValidYYYYMMDD } from '../../utils/dateUtils';
 
 interface StudentFormProps {
   student: Partial<Student> | null;
@@ -28,13 +28,28 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, onSave, onClose }) =
     if (id === 'dob_bs' && value) {
       const adDate = convertBsToAd(value);
       if (adDate) {
-        setFormData(prev => ({ ...prev, dob: adDate }));
+        setFormData(prev => ({ ...prev, dob: formatToYYYYMMDD(adDate) }));
       }
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate required fields
+    if (!formData.name || !formData.registration_id || !formData.symbol_no || 
+        !formData.roll_no || !formData.father_name || !formData.mother_name || 
+        !formData.dob_bs) {
+      alert('Please fill in all required fields');
+      return;
+    }
+    
+    // Validate date format before submitting
+    if (formData.dob && !isValidYYYYMMDD(formData.dob)) {
+      alert('Please ensure the date of birth is in YYYY-MM-DD format');
+      return;
+    }
+    
     onSave(formData);
   };
 

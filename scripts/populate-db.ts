@@ -3,15 +3,15 @@ import { studentsService, subjectsService } from '../backend/services/dbService'
 // Sample students data
 const sampleStudents = [
   {
-    student_system_id: 'S1001',
-    school_id: 2, // Updated to match the actual school ID
+    id: 'S1001',
+    school_id: 1,
     name: 'Bikash Thapa',
     dob: '2005-05-01',
     gender: 'Male',
     grade: '11',
     roll_no: '100',
     photo_url: 'https://picsum.photos/seed/student0/100',
-    academic_year: 2080,
+    year: 2080,
     symbol_no: '0160001A',
     alph: 'A',
     registration_id: '77035001',
@@ -21,15 +21,15 @@ const sampleStudents = [
     mobile_no: '9800000000'
   },
   {
-    student_system_id: 'S1002',
-    school_id: 2, // Updated to match the actual school ID
+    id: 'S1002',
+    school_id: 1,
     name: 'Anjali Rana',
     dob: '2005-05-02',
     gender: 'Female',
     grade: '11',
     roll_no: '101',
     photo_url: 'https://picsum.photos/seed/student1/100',
-    academic_year: 2080,
+    year: 2080,
     symbol_no: '0160002A',
     alph: 'B',
     registration_id: '77035002',

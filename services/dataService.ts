@@ -85,6 +85,17 @@ export const studentsApi = {
     }
   },
   
+  // Get database ID by student system ID
+  getDatabaseIdBySystemId: async (studentSystemId: string): Promise<number | null> => {
+    try {
+      const response = await api.get<{ id: number }>(`/students/system-id/${studentSystemId}`);
+      return response.data.id;
+    } catch (error) {
+      console.error(`Error fetching database ID for student system ID ${studentSystemId}:`, error);
+      return null;
+    }
+  },
+  
   create: async (student: Omit<Student, 'id'>): Promise<Student> => {
     try {
       const response = await api.post<Student>('/students', student);

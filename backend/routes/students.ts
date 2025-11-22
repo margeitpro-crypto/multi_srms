@@ -47,6 +47,22 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/students/system-id/:studentSystemId - Get database ID by student system ID
+router.get('/system-id/:studentSystemId', async (req: Request, res: Response) => {
+  try {
+    const studentSystemId = req.params.studentSystemId;
+    const databaseId = await studentsService.getStudentDatabaseIdBySystemId(studentSystemId);
+    
+    if (!databaseId) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+    
+    res.json({ id: databaseId });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch student database ID' });
+  }
+});
+
 // POST /api/students - Create a new student
 router.post('/', async (req: Request, res: Response) => {
   try {
