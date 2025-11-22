@@ -19,10 +19,13 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 // Print Pages
 import PrintMarksheetPage from './pages/print/PrintMarksheetPage';
 import PrintAllMarksheetsPage from './pages/print/PrintAllMarksheetsPage';
+import PrintAdmitCardPage from './pages/print/PrintAdmitCardPage';
+import PrintAllAdmitCardsPage from './pages/print/PrintAllAdmitCardsPage';
 
 // Common Authenticated Pages
 import StudentProfilePage from './pages/common/StudentProfilePage';
 import StudentAllProfilePage from './pages/common/StudentAllProfilePage';
+import StudentAllProfilesPage from './pages/common/StudentAllProfilesPage';
 
 // Admin Pages
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
@@ -104,6 +107,8 @@ function AppContent() {
       {/* Print routes don't need a layout */}
       <Route path="/print-marksheet/:studentId" element={<PrintMarksheetPage />} />
       <Route path="/print-all-marksheets" element={<PrintAllMarksheetsPage />} />
+      <Route path="/print-admit-card/:studentId" element={<PrintAdmitCardPage />} />
+      <Route path="/print-all-admit-cards" element={<PrintAllAdmitCardsPage />} />
 
       {/* Admin Routes */}
       <Route path="/admin/*" element={<ProtectedRoute requiredRole="admin"><DashboardLayout /></ProtectedRoute>}>
@@ -149,6 +154,12 @@ function AppContent() {
       <Route path="students" element={
         <PageTitleProvider>
           <StudentAllProfilePage />
+        </PageTitleProvider>
+      } />
+      
+      <Route path="student/all-profiles" element={
+        <PageTitleProvider>
+          <StudentAllProfilesPage />
         </PageTitleProvider>
       } />
       

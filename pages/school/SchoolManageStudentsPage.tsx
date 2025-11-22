@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import ManageStudentsPage from '../admin/ManageStudentsPage';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';

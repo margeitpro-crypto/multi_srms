@@ -15,6 +15,7 @@ import Loader from '../../components/Loader';
 import Pagination from '../../components/Pagination';
 import IconButton from '../../components/IconButton';
 import Modal from '../../components/Modal';
+
 import { UserCircleIcon } from '../../components/icons/UserCircleIcon';
 import { PencilIcon } from '../../components/icons/PencilIcon';
 import { TrashIcon } from '../../components/icons/TrashIcon';
@@ -43,10 +44,11 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+
   const { addToast } = useAppContext();
   
   const [selectedSchoolId, setSelectedSchoolId] = useState<string>(school ? school.id.toString() : '');
-  const [selectedYear, setSelectedYear] = useState<string>('2082');
+  const [selectedYear, setSelectedYear] = useState<string>(appSettings.academicYear || '2082');
   const [selectedClass, setSelectedClass] = useState<string>('11');
   const [showStudents, setShowStudents] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -57,6 +59,35 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
       setSelectedSchoolId(school.id.toString());
     }
   }, [school]);
+
+  // Effect to update selectedYear when appSettings change
+  useEffect(() => {
+    if (appSettings.academicYear) {
+      setSelectedYear(appSettings.academicYear);
+    }
+  }, [appSettings.academicYear]);
+
+  // Auto-load data when school is provided (for school users)
+  useEffect(() => {
+    if (school && selectedSchoolId && selectedYear && selectedClass && !showStudents) {
+        // Small delay to ensure all state updates are processed
+        const timer = setTimeout(() => {
+            handleLoad();
+        }, 100);
+        
+        return () => clearTimeout(timer);
+    }
+}, [school, selectedSchoolId, selectedYear, selectedClass, showStudents]);
+
+  // Auto-load data when selectedYear changes
+  useEffect(() => {
+    if (selectedSchoolId && selectedYear && selectedClass) {
+        // Set showStudents to true to indicate we want to display students
+        setShowStudents(true);
+        // Reset current page to 1
+        setCurrentPage(1);
+    }
+}, [selectedYear, selectedSchoolId, selectedClass]); // Trigger when any of these change
 
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
@@ -383,7 +414,7 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
                 value={selectedSchoolId}
                 onChange={(e) => {
                     setSelectedSchoolId(e.target.value);
-                    setShowStudents(false);
+                    // Removed setShowStudents(false) to allow auto-loading
                 }}
                 containerClassName="md:col-span-2"
               >
@@ -402,7 +433,7 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
                 value={selectedYear}
                 onChange={(e) => {
                     setSelectedYear(e.target.value);
-                    setShowStudents(false);
+                    // Removed setShowStudents(false) to allow auto-loading
                 }}
             >
                 {academicYears.filter(y => y.is_active).map(year => (
@@ -416,7 +447,7 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
                 value={selectedClass}
                 onChange={(e) => {
                     setSelectedClass(e.target.value);
-                    setShowStudents(false);
+                    // Removed setShowStudents(false) to allow auto-loading
                 }}
               >
                 <option value="11">Grade 11</option>
@@ -443,7 +474,7 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
                   <div className="flex items-center space-x-2">
                       <Button variant="secondary" onClick={() => setIsUploadModalOpen(true)} leftIcon={<DocumentArrowUpIcon className="w-4 h-4" />}>Upload Excel</Button>
                       <Button variant="secondary" onClick={exportStudentsToExcel}>Export to Excel</Button>
-                      <Button onClick={() => navigate('/students')}>AllProfile</Button>
+                      <Button onClick={() => navigate('/student/all-profiles')}>Print All Profiles</Button>
                       <Button onClick={handleAdd}>Add Student</Button>
                   </div>
                 )}
@@ -533,6 +564,8 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
             confirmText="Delete"
             confirmVariant="danger"
           />
+          
+
         </>
       )}
     </div>

@@ -38,7 +38,7 @@ const MarksEntryAdminPage: React.FC<{ school?: School; isReadOnly?: boolean }> =
     const { schools, students: MOCK_ADMIN_STUDENTS, subjects: MOCK_SUBJECTS, assignments: MOCK_STUDENT_SUBJECT_ASSIGNMENTS, marks: allMarks, updateStudentMarks, extraCreditAssignments, setAssignments, setExtraCreditAssignments, updateStudentGrades, academicYears, appSettings } = useData();
 
     const [selectedSchoolId, setSelectedSchoolId] = useState<string>(school ? school.id.toString() : '');
-    const [selectedYear, setSelectedYear] = useState('2082');
+    const [selectedYear, setSelectedYear] = useState(appSettings.academicYear || '2082');
     const [selectedClass, setSelectedClass] = useState('11');
     const [isLoading, setIsLoading] = useState(false);
     const [isDataLoaded, setIsDataLoaded] = useState(false);
@@ -50,6 +50,25 @@ const MarksEntryAdminPage: React.FC<{ school?: School; isReadOnly?: boolean }> =
             setSelectedSchoolId(school.id.toString());
         }
     }, [school]);
+    
+    // Effect to update selectedYear when appSettings change
+    useEffect(() => {
+        if (appSettings.academicYear) {
+            setSelectedYear(appSettings.academicYear);
+        }
+    }, [appSettings.academicYear]);
+    
+    // Auto-load data when school is provided (for school users)
+    useEffect(() => {
+        if (school && selectedSchoolId && !isDataLoaded) {
+            // Small delay to ensure all state updates are processed
+            const timer = setTimeout(() => {
+                handleLoad();
+            }, 100);
+            
+            return () => clearTimeout(timer);
+        }
+    }, [school, selectedSchoolId, isDataLoaded]);
     
     const [students, setStudents] = useState<Student[]>([]);
     const [headerSubjects, setHeaderSubjects] = useState<Subject[]>([]);

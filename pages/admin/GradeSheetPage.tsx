@@ -56,6 +56,10 @@ const GradeSheetPage: React.FC<{ school?: School }> = ({ school }) => {
         navigate(`/print-marksheet/${studentId}`);
     };
 
+    const handleAdmitCardClick = (studentId: string) => {
+        navigate(`/print-admit-card/${studentId}`);
+    };
+
     const handlePrintAll = () => {
         const studentIdsToPrint = filteredStudents.map(s => s.id);
         if (studentIdsToPrint.length === 0) {
@@ -63,6 +67,15 @@ const GradeSheetPage: React.FC<{ school?: School }> = ({ school }) => {
             return;
         }
         navigate('/print-all-marksheets', { state: { studentIds: studentIdsToPrint } });
+    };
+
+    const handlePrintAllAdmitCards = () => {
+        const studentIdsToPrint = filteredStudents.map(s => s.id);
+        if (studentIdsToPrint.length === 0) {
+            addToast("No students loaded to print.", "warning");
+            return;
+        }
+        navigate('/print-all-admit-cards', { state: { studentIds: studentIdsToPrint } });
     };
 
     const filteredStudents = useMemo(() => {
@@ -143,8 +156,8 @@ const GradeSheetPage: React.FC<{ school?: School }> = ({ school }) => {
                             />
                         </div>
                         <div className="flex space-x-2">
-                            
                             <Button onClick={handlePrintAll} leftIcon={<PrinterIcon className="w-4 h-4" />}>Print All Results ({filteredStudents.length})</Button>
+                            <Button variant="secondary" onClick={handlePrintAllAdmitCards} leftIcon={<PrinterIcon className="w-4 h-4" />}>Print All Admit Cards ({filteredStudents.length})</Button>
                         </div>
                     </div>
 
@@ -153,9 +166,14 @@ const GradeSheetPage: React.FC<{ school?: School }> = ({ school }) => {
                         data={filteredStudents}
                         isLoading={isLoading}
                         renderActions={(student) => (
-                            <Button size="sm" onClick={() => handleResultClick(student.id)}>
-                                Result
-                            </Button>
+                            <div className="flex space-x-2">
+                                <Button size="sm" onClick={() => handleResultClick(student.id)}>
+                                    Result
+                                </Button>
+                                <Button size="sm" variant="secondary" onClick={() => handleAdmitCardClick(student.id)}>
+                                    Admit Card
+                                </Button>
+                            </div>
                         )}
                     />
                 </div>

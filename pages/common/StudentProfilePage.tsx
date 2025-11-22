@@ -60,9 +60,14 @@ const StudentProfilePage: React.FC = () => {
             <Button variant="secondary" size="sm" onClick={handleBack} leftIcon={<ArrowLeftIcon className="w-4 h-4" />}>
                 Back
             </Button>
-            <Button variant="primary" size="sm" onClick={handlePrint} leftIcon={<PrinterIcon className="w-4 h-4" />}>
-                Print Profile
-            </Button>
+            <div className="flex space-x-2">
+                <Button variant="primary" size="sm" onClick={handlePrint} leftIcon={<PrinterIcon className="w-4 h-4" />}>
+                    Print Profile
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => navigate(`/print-admit-card/${studentId}`)} leftIcon={<PrinterIcon className="w-4 h-4" />}>
+                    Admit Card
+                </Button>
+            </div>
         </div>
 
         {/* Resume-style profile card optimized for A4 printing */}
