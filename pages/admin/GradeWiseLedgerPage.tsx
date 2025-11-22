@@ -8,6 +8,7 @@ import { useData } from '../../context/DataContext';
 import { PrinterIcon } from '../../components/icons/PrinterIcon';
 import { DocumentArrowDownIcon } from '../../components/icons/DocumentArrowDownIcon';
 import { formatToYYMMDD } from '../../utils/nepaliDateConverter';
+import * as XLSX from 'xlsx';
 
 // Utility function to format A.D. date from ISO string to YY-MM-DD
 const formatADDate = (isoDateStr: string): string => {
@@ -132,11 +133,11 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
         };
     }, [ledgerData, allGrades, assignments, gradesRefreshTrigger]);
     
-    // Function to export data as CSV
-    const exportToCSV = () => {
+    // Function to export data as Excel
+    const exportToExcel = () => {
         if (!processedLedgerData) return;
         
-        // Create CSV content
+        // Create Excel content
         let csvContent = "S.No.,School Code,School Name,Student Name,DOB,Symbol Number";
         
         // Add subject headers
@@ -167,16 +168,19 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
             csvContent += `,${gpa}\n`;
         });
         
-        // Create and download CSV file
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', `grade-wise-ledger-${selectedYear}-grade-${selectedClass}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // Convert CSV content to array of arrays for Excel
+        const lines = csvContent.split('\n').filter(line => line.trim() !== '');
+        const data = lines.map(line => line.split(','));
+            
+        // Create workbook and worksheet
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(data);
+            
+        // Add worksheet to workbook
+        XLSX.utils.book_append_sheet(wb, ws, 'Grade Wise Ledger');
+            
+        // Generate Excel file and download
+        XLSX.writeFile(wb, `grade-wise-ledger-${selectedYear}-grade-${selectedClass}.xlsx`);
     };
     return (
         <div className="animate-fade-in space-y-6">
@@ -225,7 +229,7 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
 
                     <div className="flex justify-end space-x-2 mb-4 print:hidden">
                         <Button onClick={() => window.print()} variant="secondary" leftIcon={<PrinterIcon className="w-4 h-4" />}>Print</Button>
-                        <Button onClick={exportToCSV} variant="secondary" leftIcon={<DocumentArrowDownIcon className="w-4 h-4" />}>Export</Button>
+                        <Button onClick={exportToExcel} variant="secondary" leftIcon={<DocumentArrowDownIcon className="w-4 h-4" />}>Export</Button>
                     </div>
 
                     <div className="overflow-x-auto">

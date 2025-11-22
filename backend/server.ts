@@ -9,6 +9,7 @@ import subjectAssignmentsRouter from './routes/subjectAssignments';
 import marksRouter from './routes/marks';
 import academicYearsRouter from './routes/academicYears';
 import applicationSettingsRouter from './routes/applicationSettings';
+import excelUploadRouter from './routes/excelUpload';
 
 // Load environment variables
 dotenv.config();
@@ -49,6 +50,7 @@ app.use('/api/subject-assignments', subjectAssignmentsRouter);
 app.use('/api/marks', marksRouter);
 app.use('/api/academic-years', academicYearsRouter);
 app.use('/api/application-settings', applicationSettingsRouter);
+app.use('/api/excel', excelUploadRouter);
 
 // Health check endpoint
 app.get('/api/health', (req: Request, res: Response) => {

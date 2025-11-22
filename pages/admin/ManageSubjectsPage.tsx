@@ -12,11 +12,12 @@ import { PencilIcon } from '../../components/icons/PencilIcon';
 import { TrashIcon } from '../../components/icons/TrashIcon';
 import { usePageTitle } from '../../context/PageTitleContext';
 import { useData } from '../../context/DataContext';
-import SubjectCSVUploadModal from '../../components/SubjectCSVUploadModal';
+import SubjectExcelUploadModal from '../../components/SubjectExcelUploadModal';
 import { DocumentArrowUpIcon } from '../../components/icons/DocumentArrowUpIcon';
 import Select from '../../components/Select';
 import ConfirmModal from '../../components/ConfirmModal';
 import { subjectsApi } from '../../services/dataService';
+import { DropdownMenu, DropdownMenuItem } from '../../components/DropdownMenu';
 
 const SubjectForm: React.FC<{ subject: Partial<Subject> | null, onSave: (subjectData: Subject) => void, onClose: () => void }> = ({ subject, onSave, onClose }) => {
     const [formData, setFormData] = useState({
@@ -139,11 +140,22 @@ const ManageSubjectsPage: React.FC<{ isReadOnly?: boolean }> = ({ isReadOnly = f
   const [selectedSubject, setSelectedSubject] = useState<Partial<Subject> | null>(null);
   const { addToast } = useAppContext();
   
+  const [searchQuery, setSearchQuery] = useState('');
+  
   const subjectsToDisplay = useMemo(() => {
     if (!allSubjects) return [];
     const grade = activeTab === 'grade11' ? 11 : 12;
-    return allSubjects.filter(s => s.grade === grade);
-  }, [activeTab, allSubjects]);
+    const filteredByGrade = allSubjects.filter(s => s.grade === grade);
+    
+    if (!searchQuery) return filteredByGrade;
+    
+    const lowercasedQuery = searchQuery.toLowerCase();
+    return filteredByGrade.filter(subject =>
+      subject.name.toLowerCase().includes(lowercasedQuery) ||
+      subject.theory.subCode.toLowerCase().includes(lowercasedQuery) ||
+      subject.internal.subCode.toLowerCase().includes(lowercasedQuery)
+    );
+  }, [activeTab, allSubjects, searchQuery]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -218,7 +230,12 @@ const ManageSubjectsPage: React.FC<{ isReadOnly?: boolean }> = ({ isReadOnly = f
       addToast(`${newSubjects.length} subjects uploaded and saved successfully!`, 'success');
     } catch (error) {
       console.error('Error uploading subjects:', error);
-      addToast('Failed to upload subjects. Please try again.', 'error');
+      // Show more detailed error message
+      if (error instanceof Error) {
+        addToast(`Failed to upload subjects: ${error.message}. Please try again.`, 'error');
+      } else {
+        addToast('Failed to upload subjects. Please try again.', 'error');
+      }
     }
   };
 
@@ -229,28 +246,59 @@ const ManageSubjectsPage: React.FC<{ isReadOnly?: boolean }> = ({ isReadOnly = f
             <button onClick={() => setActiveTab('grade12')} className={`px-6 py-2 text-sm font-medium transition-colors duration-200 ${ activeTab === 'grade12' ? 'border-b-2 border-primary-600 text-primary-600 dark:text-primary-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 border-b-2 border-transparent'}`}>Grade 12</button>
         </div>
 
-      {!isReadOnly && (
-        <div className="flex justify-between items-center my-6">
-            <div className="relative inline-flex rounded-md shadow-sm">
-                <Button onClick={handleAdd} className="rounded-r-none">Add Subject</Button>
-                <div className="relative -ml-px block">
-                    <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="relative inline-flex items-center rounded-r-md bg-primary-600 px-2 py-2 text-white hover:bg-primary-700 focus:z-10 focus:outline-none focus:ring-2 focus:ring-primary-500">
-                        <span className="sr-only">Open options</span>
-                        <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-                    </button>
-                    {isDropdownOpen && (
-                        <div ref={dropdownRef} className="absolute left-0 z-10 mt-2 w-40 origin-top-right rounded-md bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                            <div className="py-1">
-                                <button onClick={() => { setIsUploadModalOpen(true); setIsDropdownOpen(false); }} className="text-gray-700 dark:text-gray-200 block w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
-                                    <span className="flex items-center"><DocumentArrowUpIcon className="w-4 h-4 mr-2" /> Upload CSV</span>
-                                </button>
-                            </div>
-                        </div>
-                    )}
-                </div>
+      {/* Search and Actions */}
+      <div className="flex flex-col md:flex-row md:items-center gap-4 my-6">
+        <div className="flex-1 relative">
+          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+            <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            placeholder="Search by subject name, theory code, or internal code..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-10 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+          />
+          {searchQuery && (
+            <div className="absolute inset-y-0 right-10 flex items-center pr-3 text-xs text-gray-500 dark:text-gray-400">
+              {subjectsToDisplay.length} result{subjectsToDisplay.length !== 1 ? 's' : ''}
             </div>
+          )}
+          {searchQuery && (
+            <button 
+              onClick={() => setSearchQuery('')}
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
-      )}
+        
+        {!isReadOnly && (
+          <div className="relative inline-flex rounded-md shadow-sm">
+              <Button onClick={handleAdd} className="rounded-r-none">Add Subject</Button>
+              <div className="relative -ml-px block">
+                  <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="relative inline-flex items-center rounded-r-md bg-primary-600 px-2 py-2 text-white hover:bg-primary-700 focus:z-10 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                      <span className="sr-only">Open options</span>
+                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                  </button>
+                  {isDropdownOpen && (
+                      <div ref={dropdownRef} className="absolute right-0 z-10 mt-2 w-40 origin-top-right rounded-md bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                          <div className="py-1">
+                              <button onClick={() => { setIsUploadModalOpen(true); setIsDropdownOpen(false); }} className="text-gray-700 dark:text-gray-200 block w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
+                                  <span className="flex items-center"><DocumentArrowUpIcon className="w-4 h-4 mr-2" /> Upload Excel</span>
+                              </button>
+                          </div>
+                      </div>
+                  )}
+              </div>
+          </div>
+        )}
+      </div>
 
        <div className={`overflow-x-auto bg-white dark:bg-gray-800 shadow-lg rounded-lg ${!isReadOnly ? '' : 'mt-6'}`}>
         <table className="w-full text-xs text-left text-gray-500 dark:text-gray-400">
@@ -270,7 +318,7 @@ const ManageSubjectsPage: React.FC<{ isReadOnly?: boolean }> = ({ isReadOnly = f
                 {isLoading ? (
                     <tr><td colSpan={isReadOnly ? 7 : 8} className="text-center py-8"><Loader /></td></tr>
                 ) : !subjectsToDisplay || subjectsToDisplay.length === 0 ? (
-                    <tr><td colSpan={isReadOnly ? 7 : 8} className="text-center py-8">No subjects available for this grade.</td></tr>
+                    <tr><td colSpan={isReadOnly ? 7 : 8} className="text-center py-8">{searchQuery ? `No subjects found matching "${searchQuery}"` : 'No subjects available for this grade.'}</td></tr>
                 ) : (
                     subjectsToDisplay.map((subject, index) => (
                         <React.Fragment key={subject.id}>
@@ -284,9 +332,35 @@ const ManageSubjectsPage: React.FC<{ isReadOnly?: boolean }> = ({ isReadOnly = f
                                 <td rowSpan={2} className="px-6 py-4 font-bold text-center align-middle">{subject.theory.fullMarks + subject.internal.fullMarks}</td>
                                 {!isReadOnly && (
                                   <td rowSpan={2} className="px-6 py-4 text-right align-middle">
-                                      <div className="flex justify-end items-center space-x-2">
-                                          <IconButton size="sm" onClick={() => handleEdit(subject)} title="Edit Subject" className="text-blue-500 hover:text-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/50"><PencilIcon className="w-5 h-5" /></IconButton>
-                                          <IconButton size="sm" onClick={() => handleDelete(subject)} title="Delete Subject" className="text-red-500 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/50"><TrashIcon className="w-5 h-5" /></IconButton>
+                                      <div className="flex justify-end">
+                                          <DropdownMenu
+                                            trigger={
+                                              <IconButton 
+                                                size="sm" 
+                                                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                                              >
+                                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                                </svg>
+                                              </IconButton>
+                                            }
+                                          >
+                                            <DropdownMenuItem onClick={() => handleEdit(subject)}>
+                                              <div className="flex items-center">
+                                                <PencilIcon className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
+                                                <span>Edit</span>
+                                              </div>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem 
+                                              onClick={() => handleDelete(subject)}
+                                              className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                            >
+                                              <div className="flex items-center">
+                                                <TrashIcon className="w-4 h-4 mr-2" />
+                                                <span>Delete</span>
+                                              </div>
+                                            </DropdownMenuItem>
+                                          </DropdownMenu>
                                       </div>
                                   </td>
                                 )}
@@ -307,7 +381,7 @@ const ManageSubjectsPage: React.FC<{ isReadOnly?: boolean }> = ({ isReadOnly = f
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={selectedSubject?.id ? 'Edit Subject' : 'Add New Subject'}>
         <SubjectForm subject={selectedSubject} onSave={handleSave} onClose={() => setIsModalOpen(false)} />
       </Modal>
-      <SubjectCSVUploadModal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} onUploadSuccess={handleUploadSuccess} />
+      <SubjectExcelUploadModal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} onUploadSuccess={handleUploadSuccess} />
       <ConfirmModal
         isOpen={isConfirmModalOpen}
         onClose={() => {

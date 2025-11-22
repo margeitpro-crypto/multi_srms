@@ -25,7 +25,7 @@ const faqData = [
     items: [
       {
         question: 'How do I add new students to the system?',
-        answer: 'To add students, go to the School Dashboard > Students > Add Student. Fill in all required student information including name, date of birth, grade, and roll number. You can also import students in bulk using the CSV upload feature.'
+        answer: 'To add students, go to the School Dashboard > Students > Add Student. Fill in all required student information including name, date of birth, grade, and roll number. You can also import students in bulk using the Excel upload feature.'
       },
       {
         question: 'Is there a limit to the number of students I can add?',

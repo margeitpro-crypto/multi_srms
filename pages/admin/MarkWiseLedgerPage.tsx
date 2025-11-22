@@ -8,6 +8,7 @@ import { PrinterIcon } from '../../components/icons/PrinterIcon';
 import { DocumentArrowDownIcon } from '../../components/icons/DocumentArrowDownIcon';
 import { useData } from '../../context/DataContext';
 import Modal from '../../components/Modal';
+import * as XLSX from 'xlsx';
 
 // Add CSS for print-specific styling
 const printStyles = `
@@ -138,8 +139,8 @@ const MarkWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
     // Create a ref for the content to be exported
     const contentRef = useRef<HTMLDivElement>(null);
     
-    // Function to export data as CSV
-    const exportToCSV = () => {
+    // Function to export data as Excel
+    const exportToExcel = () => {
         if (!processedLedgerData) return;
         
         // Create CSV content
@@ -171,16 +172,19 @@ const MarkWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
             csvContent += `,${student.totalMarks || 0}\n`;
         });
         
-        // Create and download CSV file
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', `mark-wise-ledger-${selectedYear}-grade-${selectedClass}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // Convert CSV content to array of arrays for Excel
+        const lines = csvContent.split('\n').filter(line => line.trim() !== '');
+        const data = lines.map(line => line.split(','));
+        
+        // Create workbook and worksheet
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        
+        // Add worksheet to workbook
+        XLSX.utils.book_append_sheet(wb, ws, 'Mark Wise Ledger');
+        
+        // Generate Excel file and download
+        XLSX.writeFile(wb, `mark-wise-ledger-${selectedYear}-grade-${selectedClass}.xlsx`);
     };
     
     return (
@@ -231,7 +235,7 @@ const MarkWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                 
                     <div className="flex justify-end space-x-2 mb-4 print:hidden">
                         <Button onClick={() => window.print()} variant="secondary" leftIcon={<PrinterIcon className="w-4 h-4" />}>Print</Button>
-                        <Button onClick={exportToCSV} variant="secondary" leftIcon={<DocumentArrowDownIcon className="w-4 h-4" />}>Export</Button>
+                        <Button onClick={exportToExcel} variant="secondary" leftIcon={<DocumentArrowDownIcon className="w-4 h-4" />}>Export</Button>
                     </div>
 
                     <div className="overflow-x-auto">

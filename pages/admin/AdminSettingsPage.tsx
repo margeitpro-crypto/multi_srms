@@ -389,7 +389,7 @@ const DataManagement = () => {
 
             <div className="pt-6 border-t dark:border-gray-600">
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Export Data</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Download system data in CSV format for offline use or migration.</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Download system data in Excel format for offline use or migration.</p>
                 <div className="flex flex-wrap gap-4 mt-4">
                     <Button variant="ghost" onClick={() => addToast("Exporting students data...", "info")}>Export Students</Button>
                     <Button variant="ghost" onClick={() => addToast("Exporting schools data...", "info")}>Export Schools</Button>

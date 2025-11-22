@@ -11,11 +11,14 @@ import IconButton from '../../components/IconButton';
 import { EyeIcon } from '../../components/icons/EyeIcon';
 import { PencilIcon } from '../../components/icons/PencilIcon';
 import { TrashIcon } from '../../components/icons/TrashIcon';
+import { BuildingOfficeIcon } from '../../components/icons/BuildingOfficeIcon';
+import { UserPlusIcon } from '../../components/icons/UserPlusIcon';
 import { usePageTitle } from '../../context/PageTitleContext';
 import { useData } from '../../context/DataContext';
 import { schoolsApi, usersApi } from '../../services/dataService';
 import api from '../../services/api';
 import ConfirmModal from '../../components/ConfirmModal';
+import { DropdownMenu, DropdownMenuItem } from '../../components/DropdownMenu';
 
 const SchoolForm: React.FC<{ school: Partial<School> | null, onSave: (school: School) => void, onClose: () => void }> = ({ school, onSave, onClose }) => {
   const [formData, setFormData] = useState<Partial<School>>({
@@ -60,57 +63,145 @@ const SchoolForm: React.FC<{ school: Partial<School> | null, onSave: (school: Sc
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <InputField id="logoUrl" label="School Logo URL" onChange={handleChange} defaultValue={formData.logoUrl} />
-      
+    <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <InputField id="iemisCode" label="IEMIS No." onChange={handleChange} defaultValue={formData.iemisCode} required />
-        <InputField id="name" label="School's Name" onChange={handleChange} defaultValue={formData.name} required />
-        <InputField id="municipality" label="Municipality" onChange={handleChange} defaultValue={formData.municipality} required />
-        <InputField id="estd" label="Estd" onChange={handleChange} defaultValue={formData.estd} required />
+        <InputField 
+          id="iemisCode" 
+          label="IEMIS No." 
+          onChange={handleChange} 
+          value={formData.iemisCode} 
+          required 
+        />
+        <InputField 
+          id="name" 
+          label="School's Name" 
+          onChange={handleChange} 
+          value={formData.name} 
+          required 
+        />
       </div>
       
-      <hr className="my-2 border-gray-300 dark:border-gray-600"/>
-      
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <InputField id="preparedBy" label="Prepared By" onChange={handleChange} defaultValue={formData.preparedBy} required />
-        <InputField id="checkedBy" label="Checked By" onChange={handleChange} defaultValue={formData.checkedBy} required />
+        <InputField 
+          id="municipality" 
+          label="Municipality" 
+          onChange={handleChange} 
+          value={formData.municipality} 
+          required 
+        />
+        <InputField 
+          id="estd" 
+          label="Estd" 
+          onChange={handleChange} 
+          value={formData.estd} 
+          required 
+        />
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <InputField id="headTeacherName" label="Head Teacher Name" onChange={handleChange} defaultValue={formData.headTeacherName} required />
-        <InputField id="headTeacherContact" label="Head Teacher's Contact No.*" onChange={handleChange} defaultValue={formData.headTeacherContact} required />
+      <div className="grid grid-cols-1 gap-4">
+        <InputField 
+          id="logoUrl" 
+          label="School Logo URL" 
+          onChange={handleChange} 
+          value={formData.logoUrl} 
+        />
       </div>
       
-      <hr className="my-2 border-gray-300 dark:border-gray-600"/>
+      <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Report Details</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <InputField 
+            id="preparedBy" 
+            label="Prepared By" 
+            onChange={handleChange} 
+            value={formData.preparedBy} 
+            required 
+          />
+          <InputField 
+            id="checkedBy" 
+            label="Checked By" 
+            onChange={handleChange} 
+            value={formData.checkedBy} 
+            required 
+          />
+        </div>
+      </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <InputField id="email" label="Email (optional)" type="email" onChange={handleChange} defaultValue={formData.email} />
-        <Select  id="subscriptionPlan" label="Subscription Plan *" onChange={handleChange} defaultValue={formData.subscriptionPlan}>
+      <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Contact Person</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <InputField 
+            id="headTeacherName" 
+            label="Head Teacher Name" 
+            onChange={handleChange} 
+            value={formData.headTeacherName} 
+            required 
+          />
+          <InputField 
+            id="headTeacherContact" 
+            label="Head Teacher's Contact No." 
+            onChange={handleChange} 
+            value={formData.headTeacherContact} 
+            required 
+          />
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <InputField 
+            id="email" 
+            label="Email (optional)" 
+            type="email" 
+            onChange={handleChange} 
+            value={formData.email} 
+          />
+        </div>
+      </div>
+      
+      <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Subscription & Status</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Select  
+            id="subscriptionPlan" 
+            label="Subscription Plan" 
+            onChange={handleChange} 
+            value={formData.subscriptionPlan}
+          >
             <option value="Basic">Basic</option>
             <option value="Pro">Pro</option>
             <option value="Enterprise">Enterprise</option>
-        </Select>
-      </div>
-       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-         <Select id="status" label="Status *" onChange={handleChange} defaultValue={formData.status}>
+          </Select>
+          <Select 
+            id="status" 
+            label="Status" 
+            onChange={handleChange} 
+            value={formData.status}
+          >
             <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
-        </Select>
+          </Select>
+        </div>
       </div>
 
-      <div className="flex justify-end space-x-2 pt-4">
+      <div className="flex justify-end space-x-3 pt-6">
         <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-        <Button type="submit">{school?.id ? 'Update School' : 'Add School'}</Button>
+        <Button 
+          type="submit"
+          leftIcon={school?.id ? undefined : <UserPlusIcon className="h-4 w-4" />}
+        >
+          {school?.id ? 'Update School' : 'Add School'}
+        </Button>
       </div>
     </form>
   );
 };
 
 const DetailItem = ({ label, value }: { label: string, value: React.ReactNode }) => (
-    <div>
-        <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</p>
-        <p className="text-sm text-gray-800 dark:text-white break-words">{value}</p>
+    <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150">
+        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{label}</p>
+        <p className="text-sm text-gray-800 dark:text-white break-words font-medium">{value}</p>
     </div>
 );
 
@@ -255,13 +346,49 @@ const ManageSchoolsPage: React.FC = () => {
   };
 
   const columns = [
-    { header: 'ID', accessor: 'id' as const },
-    { header: 'Logo', accessor: (school: School) => <img src={school.logoUrl} alt="logo" className="h-10 w-10 rounded-full object-cover" /> },
-    { header: 'IEMIS No', accessor: 'iemisCode' as const },
-    { header: 'School Name', accessor: 'name' as const },
-    { header: 'Plan', accessor: 'subscriptionPlan' as const },
-    { header: 'Estd', accessor: 'estd' as const },
-    { header: 'Status', accessor: (school: School) => (
+    { 
+      header: 'ID', 
+      accessor: 'id' as const,
+      className: 'whitespace-nowrap text-gray-500 dark:text-gray-400'
+    },
+    { 
+      header: 'Logo', 
+      accessor: (school: School) => <img src={school.logoUrl} alt="logo" className="h-10 w-10 rounded-full object-cover" />,
+      className: 'whitespace-nowrap'
+    },
+    { 
+      header: 'IEMIS No', 
+      accessor: 'iemisCode' as const,
+      className: 'font-medium text-gray-900 dark:text-white'
+    },
+    { 
+      header: 'School Name', 
+      accessor: 'name' as const,
+      className: 'font-medium text-gray-900 dark:text-white'
+    },
+    { 
+      header: 'Plan', 
+      accessor: (school: School) => (
+        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+            school.subscriptionPlan === 'Basic' 
+            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200' 
+            : school.subscriptionPlan === 'Pro' 
+            ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200' 
+            : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200'
+        }`}>
+            {school.subscriptionPlan}
+        </span>
+      ),
+      className: 'whitespace-nowrap'
+    },
+    { 
+      header: 'Estd', 
+      accessor: 'estd' as const,
+      className: 'text-gray-500 dark:text-gray-400'
+    },
+    { 
+      header: 'Status', 
+      accessor: (school: School) => (
         <span className={`px-2 py-1 text-xs font-medium rounded-full ${
             school.status === 'Active' 
             ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' 
@@ -269,7 +396,9 @@ const ManageSchoolsPage: React.FC = () => {
         }`}>
             {school.status}
         </span>
-    )},
+      ),
+      className: 'whitespace-nowrap'
+    },
   ];
 
   const searchByOptions = {
@@ -279,59 +408,125 @@ const ManageSchoolsPage: React.FC = () => {
   };
 
   return (
-    <div className="animate-fade-in">
-      
-      
-      <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4 mb-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-        <div className="w-full md:w-auto">
-          <Select
-            id="searchBy"
-            label="Search By"
-            value={searchBy}
-            onChange={(e) => setSearchBy(e.target.value as 'name' | 'iemisCode' | 'municipality')}
-            containerClassName="w-full md:w-48"
-          >
-            <option value="name">School Name</option>
-            <option value="iemisCode">IEMIS Code</option>
-            <option value="municipality">Municipality</option>
-          </Select>
+    <div className="p-4 md:p-6 animate-fade-in">
+      {/* Header with title and stats */}
+      <div className="mb-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <BuildingOfficeIcon className="h-6 w-6 text-primary-600" />
+              Manage Schools
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Add, edit, and manage school records
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <div className="bg-primary-100 dark:bg-primary-900/30 px-3 py-1 rounded-full">
+              <span className="text-sm font-medium text-primary-800 dark:text-primary-200">
+                {schools?.length || 0} schools
+              </span>
+            </div>
+          </div>
         </div>
-        <InputField
-            id="searchQuery"
-            label=""
-            placeholder={`Search by ${searchByOptions[searchBy]}...`}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            containerClassName="flex-grow"
-        />
-        <div className="flex justify-between items-center mb-6">
-          <Button onClick={handleAdd}>Add School</Button>
+        
+        {/* Search and Actions */}
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 flex-1">
+            <div className="w-full sm:w-48">
+              <Select
+                id="searchBy"
+                label=""
+                value={searchBy}
+                onChange={(e) => setSearchBy(e.target.value as 'name' | 'iemisCode' | 'municipality')}
+              >
+                <option value="name">School Name</option>
+                <option value="iemisCode">IEMIS Code</option>
+                <option value="municipality">Municipality</option>
+              </Select>
+            </div>
+            
+            <div className="flex-1 relative">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <InputField
+                id="searchQuery"
+                label=""
+                placeholder={`Search by ${searchByOptions[searchBy]}...`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10"
+              />
+            </div>
+          </div>
+          
+          <Button 
+            onClick={handleAdd}
+            leftIcon={<UserPlusIcon className="h-4 w-4" />}
+          >
+            Add School
+          </Button>
         </div>
       </div>
 
-      <Table<School>
-        columns={columns}
-        data={paginatedSchools}
-        isLoading={isDataLoading}
-        renderActions={(school) => (
-          <>
-            <IconButton size="sm" onClick={() => handleView(school)} title="View School">
-              <EyeIcon className="w-5 h-5" />
-            </IconButton>
-            <IconButton size="sm" onClick={() => handleEdit(school)} title="Edit School" className="text-blue-500 hover:text-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/50">
-              <PencilIcon className="w-5 h-5" />
-            </IconButton>
-            <IconButton size="sm" onClick={() => handleDelete(school)} title="Delete School" className="text-red-500 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/50">
-              <TrashIcon className="w-5 h-5" />
-            </IconButton>
-          </>
-        )}
-      />
-      <Pagination currentPage={currentPage} totalPages={totalPages > 0 ? totalPages : 1} onPageChange={setCurrentPage} />
+      {/* Schools Table */}
+      <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm mb-6">
+        <Table<School>
+          columns={columns}
+          data={paginatedSchools}
+          isLoading={isDataLoading}
+          renderActions={(school) => (
+            <DropdownMenu
+              trigger={
+                <IconButton 
+                  size="sm" 
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                  </svg>
+                </IconButton>
+              }
+            >
+              <DropdownMenuItem onClick={() => handleView(school)}>
+                <div className="flex items-center">
+                  <EyeIcon className="w-4 h-4 mr-2 text-primary-600 dark:text-primary-400" />
+                  <span>View Details</span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleEdit(school)}>
+                <div className="flex items-center">
+                  <PencilIcon className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
+                  <span>Edit</span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => handleDelete(school)}
+                className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
+              >
+                <div className="flex items-center">
+                  <TrashIcon className="w-4 h-4 mr-2" />
+                  <span>Delete</span>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenu>
+          )}
+        />
+      </div>
+      
+      <div className="flex justify-center">
+        <Pagination currentPage={currentPage} totalPages={totalPages > 0 ? totalPages : 1} onPageChange={setCurrentPage} />
+      </div>
+      
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={selectedSchool?.id ? 'Edit School' : 'Add New School'}
+        size="lg"
       >
         <SchoolForm school={selectedSchool} onSave={handleSave} onClose={() => setIsModalOpen(false)} />
       </Modal>
@@ -340,9 +535,10 @@ const ManageSchoolsPage: React.FC = () => {
         isOpen={!!viewingSchool}
         onClose={() => setViewingSchool(null)}
         title="School Details"
+        size="lg"
       >
         {viewingSchool && (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div className="flex items-center space-x-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                 <img src={viewingSchool.logoUrl} alt="logo" className="h-20 w-20 rounded-full object-cover ring-4 ring-white dark:ring-gray-800" />
                 <div>
@@ -356,7 +552,7 @@ const ManageSchoolsPage: React.FC = () => {
                 <DetailItem label="Established" value={viewingSchool.estd} />
                 <DetailItem label="Subscription Plan" value={`${viewingSchool.subscriptionPlan} Plan`} />
                 <DetailItem label="Status" value={<span className={`px-2 py-1 text-xs font-medium rounded-full ${viewingSchool.status === 'Active' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'}`}>{viewingSchool.status}</span>} />
-                <DetailItem label="Email" value={viewingSchool.email} />
+                <DetailItem label="Email" value={viewingSchool.email || 'N/A'} />
                 
                 <h4 className="col-span-full font-semibold text-base mt-4 border-b dark:border-gray-600 pb-1 text-primary-600 dark:text-primary-400">Contact Person</h4>
                 <DetailItem label="Head Teacher" value={viewingSchool.headTeacherName} />

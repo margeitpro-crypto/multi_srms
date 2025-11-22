@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Card from '../../components/Card';
 import { AcademicCapIcon } from '../../components/icons/AcademicCapIcon';
 import { ExclamationCircleIcon } from '../../components/icons/ExclamationCircleIcon';
@@ -14,7 +14,7 @@ import { ClipboardDocumentCheckIcon } from '../../components/icons/ClipboardDocu
 import { TableCellsIcon } from '../../components/icons/TableCellsIcon';
 import { UserPlusIcon } from '../../components/icons/UserPlusIcon';
 import { ExclamationTriangleIcon } from '../../components/icons/ExclamationTriangleIcon';
-
+import dataService from '../../services/dataService';
 
 const DetailItem: React.FC<{ label: string, value: React.ReactNode }> = ({ label, value }) => (
     <div>
@@ -67,12 +67,15 @@ const SchoolProfileCard: React.FC<SchoolProfileCardProps> = ({ school, totalStud
     );
 };
 
-
 const SchoolDashboardPage: React.FC<{ school?: School }> = ({ school }) => {
   const { setPageTitle } = usePageTitle();
   const { loggedInSchool } = useAuth();
-  const { students, grades, subjects, assignments, appSettings } = useData();
+  const { students, subjects, appSettings } = useData();
   const navigate = useNavigate();
+  const [assignments, setAssignments] = useState<{ [studentId: string]: number[] }>({});
+  const [marks, setMarks] = useState<any>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [grades, setGrades] = useState<{ [studentId: string]: any }>({});
 
   useEffect(() => {
     setPageTitle('Dashboard');
@@ -80,13 +83,89 @@ const SchoolDashboardPage: React.FC<{ school?: School }> = ({ school }) => {
 
   const schoolToDisplay = school || loggedInSchool;
 
+  // Fetch real data for assignments and marks
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!schoolToDisplay || !students) return;
+      
+      setIsLoading(true);
+      try {
+        const currentYear = appSettings.academicYear || '2082';
+        const schoolStudents = students.filter(s => s.school_id === schoolToDisplay.id && s.year.toString() === currentYear);
+        
+        // Fetch assignments and marks for all students in parallel
+        const assignmentsData: { [studentId: string]: number[] } = {};
+        const marksData: { [studentId: string]: any } = {};
+        const gradesData: { [studentId: string]: any } = {};
+        
+        // Reset state before fetching new data
+        setAssignments({});
+        setMarks({});
+        setGrades({});
+        
+        if (schoolStudents.length === 0) {
+          // If no students for this year, set empty data and finish loading
+          setAssignments(assignmentsData);
+          setMarks(marksData);
+          setGrades(gradesData);
+          setIsLoading(false);
+          return;
+        }
+        
+        await Promise.all(schoolStudents.map(async (student) => {
+          try {
+            // Fetch assignments
+            const assignmentResponse = await dataService.subjectAssignments.getAssignments(student.id, currentYear);
+            assignmentsData[student.id] = assignmentResponse.subjectIds || [];
+            
+            // Fetch marks
+            const marksResponse = await dataService.marks.getMarks(student.id, currentYear);
+            marksData[student.id] = marksResponse || {};
+            
+            // Calculate simple GPA based on marks (for demonstration)
+            // In a real implementation, this would use the grade calculation logic
+            let totalMarks = 0;
+            let subjectCount = 0;
+            
+            Object.values(marksResponse || {}).forEach((subjectMarks: any) => {
+              if (subjectMarks && !subjectMarks.isAbsent) {
+                const theory = subjectMarks.theory || 0;
+                const practical = subjectMarks.practical || 0;
+                totalMarks += (theory + practical) / 2;
+                subjectCount++;
+              }
+            });
+            
+            const gpa = subjectCount > 0 ? (totalMarks / subjectCount / 25) : 0; // Simple conversion to GPA scale
+            gradesData[student.id] = { gpa: Math.min(gpa, 4.0) }; // Cap at 4.0
+          } catch (error) {
+            console.error(`Error fetching data for student ${student.id}:`, error);
+            assignmentsData[student.id] = [];
+            marksData[student.id] = {};
+            gradesData[student.id] = { gpa: 0 };
+          }
+        }));
+        
+        setAssignments(assignmentsData);
+        setMarks(marksData);
+        setGrades(gradesData);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [schoolToDisplay, students, appSettings.academicYear]);
+
   const totalSchoolStudents = useMemo(() => {
     if (!schoolToDisplay || !students) return 0;
     return students.filter(s => s.school_id === schoolToDisplay.id).length;
   }, [schoolToDisplay, students]);
 
   const schoolStats = useMemo(() => {
-    if (!schoolToDisplay || !students || !grades || !subjects || !assignments) {
+    if (!schoolToDisplay || !students || !subjects || isLoading) {
       return {
         totalStudents: 0,
         averageGpa: '0.00',
@@ -123,7 +202,6 @@ const SchoolDashboardPage: React.FC<{ school?: School }> = ({ school }) => {
         student => !assignments[student.id] || assignments[student.id].length === 0
     );
 
-
     let totalGpa = 0;
     let gradedStudentCount = 0;
     const ngStudentsList: Student[] = [];
@@ -133,17 +211,17 @@ const SchoolDashboardPage: React.FC<{ school?: School }> = ({ school }) => {
     const grade12Gpas: number[] = [];
 
     for (const student of schoolStudents) {
-      const gradeInfo = grades[student.id];
-      if (gradeInfo) {
-        if (gradeInfo.gpa > 0) {
-          totalGpa += gradeInfo.gpa;
+      const studentGrades = grades[student.id];
+      if (studentGrades) {
+        if (studentGrades.gpa > 0) {
+          totalGpa += studentGrades.gpa;
           gradedStudentCount++;
-          gradedStudents.push({ name: student.name, gpa: gradeInfo.gpa, id: student.id });
+          gradedStudents.push({ name: student.name, gpa: studentGrades.gpa, id: student.id });
 
           if (student.grade === '11') {
-            grade11Gpas.push(gradeInfo.gpa);
+            grade11Gpas.push(studentGrades.gpa);
           } else if (student.grade === '12') {
-            grade12Gpas.push(gradeInfo.gpa);
+            grade12Gpas.push(studentGrades.gpa);
           }
         } else {
           ngStudentsList.push(student);
@@ -175,8 +253,7 @@ const SchoolDashboardPage: React.FC<{ school?: School }> = ({ school }) => {
       studentBreakdown,
       studentsWithoutSubjects,
     };
-  }, [schoolToDisplay, students, grades, subjects, assignments]);
-
+  }, [schoolToDisplay, students, subjects, assignments, grades, isLoading]);
 
   const stats = [
     { title: `Total Students (${appSettings.academicYear || '2082'})`, value: schoolStats.totalStudents, icon: <UserGroupIcon className="w-8 h-8 text-white" />, color: 'bg-blue-500', description: schoolStats.studentBreakdown },
@@ -190,8 +267,11 @@ const SchoolDashboardPage: React.FC<{ school?: School }> = ({ school }) => {
     { text: 'Assign Subjects', icon: <ClipboardDocumentCheckIcon className="w-8 h-8 text-green-500" />, action: () => navigate('/school/assign-subjects') }
   ];
 
-
   if (!schoolToDisplay) {
+      return <div className="flex justify-center items-center h-64"><Loader /></div>
+  }
+
+  if (isLoading) {
       return <div className="flex justify-center items-center h-64"><Loader /></div>
   }
 
@@ -200,7 +280,7 @@ const SchoolDashboardPage: React.FC<{ school?: School }> = ({ school }) => {
       <SchoolProfileCard school={schoolToDisplay} totalStudents={totalSchoolStudents} />
       
       <div className="mb-6">
-        <h2 className="text-xl font-bold text-gray-800 dark:text-white">Performance Snapshot (Year: 2082)</h2>
+        <h2 className="text-xl font-bold text-gray-800 dark:text-white">Performance Snapshot (Year: {appSettings.academicYear || '2082'})</h2>
       </div>
 
       {schoolStats.studentsWithoutSubjects.length > 0 && (

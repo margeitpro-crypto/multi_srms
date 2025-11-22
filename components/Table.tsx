@@ -1,5 +1,6 @@
 import React from 'react';
 import Loader from './Loader';
+import { DropdownMenu, DropdownMenuItem } from './DropdownMenu';
 
 interface Column<T> {
   header: string;
@@ -43,7 +44,7 @@ function Table<T,>({ columns, data, isLoading, renderActions }: TableProps<T>) {
             </tr>
           ) : (
             data.map((item, rowIndex) => (
-              <tr key={rowIndex} className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+              <tr key={rowIndex} className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-150">
                 {columns.map((col, colIndex) => (
                   <td key={colIndex} className={`px-6 py-4 ${col.className || ''}`}>
                     {typeof col.accessor === 'function'

@@ -10,7 +10,7 @@ import InputField from '../../components/InputField';
 import Table from '../../components/Table';
 import ConfirmModal from '../../components/ConfirmModal';
 import StudentForm from '../../components/forms/StudentForm';
-import CSVUploadModal from '../../components/CSVUploadModal';
+import ExcelUploadModal from '../../components/ExcelUploadModal';
 import Loader from '../../components/Loader';
 import Pagination from '../../components/Pagination';
 import IconButton from '../../components/IconButton';
@@ -21,6 +21,8 @@ import { TrashIcon } from '../../components/icons/TrashIcon';
 import { DocumentArrowUpIcon } from '../../components/icons/DocumentArrowUpIcon';
 import { usePageTitle } from '../../context/PageTitleContext';
 import { formatToYYMMDD } from '../../utils/nepaliDateConverter';
+import * as XLSX from 'xlsx';
+import { DropdownMenu, DropdownMenuItem } from '../../components/DropdownMenu';
 
 // Utility function to format A.D. date from ISO string to YY-MM-DD
 const formatADDate = (isoDateStr: string): string => {
@@ -246,18 +248,25 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
       addToast(`${savedStudents.length} students uploaded and saved successfully!`, 'success');
     } catch (error) {
       console.error('Error saving students:', error);
-      addToast('Failed to save students to database. Please try again.', 'error');
+      // Show more detailed error message
+      if (error instanceof Error) {
+        addToast(`Failed to save students to database: ${error.message}. Please try again.`, 'error');
+      } else {
+        addToast('Failed to save students to database. Please try again.', 'error');
+      }
+      // Return early to prevent success flow
+      return;
     }
   };
 
-  // Function to export student data as CSV
-  const exportStudentsToCSV = () => {
+  // Function to export student data as Excel
+  const exportStudentsToExcel = () => {
     if (!filteredStudents || filteredStudents.length === 0) {
       addToast("No students to export.", "warning");
       return;
     }
 
-    // Create CSV content
+    // Create Excel content
     const headers = [
       "S.N.",
       "School Code",
@@ -275,39 +284,39 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
       "Year"
     ];
 
-    let csvContent = headers.join(",") + "\n";
-
-    filteredStudents.forEach((student, index) => {
+    // Create data array
+    const data = filteredStudents.map((student, index) => {
       const school = schools?.find(s => s.id === student.school_id);
-      const row = [
+      return [
         index + 1,
         school?.iemisCode || "N/A",
         student.id,
         student.symbol_no,
         student.registration_id,
-        `"${student.name}"`,
+        student.name,
         student.gender,
         student.grade,
         student.dob_bs,
         formatADDate(student.dob),
-        `"${student.father_name}"`,
-        `"${student.mother_name}"`,
+        student.father_name,
+        student.mother_name,
         student.mobile_no,
         student.year
       ];
-      csvContent += row.join(",") + "\n";
     });
 
-    // Create and download CSV file
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `students_${selectedSchoolId}_${selectedYear}_grade${selectedClass}.csv`);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Add headers to the beginning of the data array
+    const excelData = [headers, ...data];
+
+    // Create workbook and worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(excelData);
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, 'Students');
+
+    // Generate Excel file and download
+    XLSX.writeFile(wb, `students_${selectedSchoolId}_${selectedYear}_grade${selectedClass}.xlsx`);
   };
 
   const filteredStudents = useMemo(() => {
@@ -344,21 +353,14 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
   
   const columns = [
     { header: 'S.N.', accessor: (item: Student, index: number) => (currentPage - 1) * ITEMS_PER_PAGE + index + 1, className: 'whitespace-nowrap' },
-    { header: 'Iemis No', accessor: (student: Student) => schools?.find(s => s.id === student.school_id)?.iemisCode || 'N/A', className: 'whitespace-nowrap' },
-
-    
-    { header: 'Student Id', accessor: 'id' as const, className: 'whitespace-nowrap' },
     { header: 'Sym No', accessor: 'symbol_no' as const, className: 'whitespace-nowrap' },
-   
+
     { header: 'Reg Id', accessor: 'registration_id' as const, className: 'whitespace-nowrap' },
     { header: 'Full Name', accessor: 'name' as const, className: 'whitespace-nowrap min-w-40' },
     { header: 'Gender', accessor: 'gender' as const, className: 'whitespace-nowrap' },
     { header: 'Class', accessor: 'grade' as const, className: 'whitespace-nowrap' },
     { header: 'Dob Bs', accessor: 'dob_bs' as const, className: 'whitespace-nowrap' },
-    { header: 'Dob Ad', accessor: (student: Student) => formatADDate(student.dob), className: 'whitespace-nowrap' },
-    { header: "Father's Name", accessor: 'father_name' as const, className: 'whitespace-nowrap min-w-40' },
-    { header: "Mother's Name", accessor: 'mother_name' as const, className: 'whitespace-nowrap min-w-40' },
-    { header: 'Mobile No', accessor: 'mobile_no' as const, className: 'whitespace-nowrap' },
+
   ];
 
   return (
@@ -439,8 +441,8 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
                 </div>
                 {!isReadOnly && (
                   <div className="flex items-center space-x-2">
-                      <Button variant="secondary" onClick={() => setIsUploadModalOpen(true)} leftIcon={<DocumentArrowUpIcon className="w-4 h-4" />}>Upload CSV</Button>
-                      <Button variant="secondary" onClick={exportStudentsToCSV}>Export</Button>
+                      <Button variant="secondary" onClick={() => setIsUploadModalOpen(true)} leftIcon={<DocumentArrowUpIcon className="w-4 h-4" />}>Upload Excel</Button>
+                      <Button variant="secondary" onClick={exportStudentsToExcel}>Export to Excel</Button>
                       <Button onClick={() => navigate('/students')}>AllProfile</Button>
                       <Button onClick={handleAdd}>Add Student</Button>
                   </div>
@@ -452,21 +454,44 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
                 data={paginatedStudents}
                 isLoading={isLoading}
                 renderActions={(student) => (
-                <>
-                  <IconButton size="sm" title="View Profile" onClick={() => handleViewProfile(student.id)}>
-                    <UserCircleIcon className="w-5 h-5" />
-                  </IconButton>
-                  {!isReadOnly && (
-                    <>
-                      <IconButton size="sm" onClick={() => handleEdit(student)} title="Edit Student" className="text-blue-500 hover:text-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/50">
-                        <PencilIcon className="w-5 h-5" />
+                  <DropdownMenu
+                    trigger={
+                      <IconButton 
+                        size="sm" 
+                        className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                      >
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                        </svg>
                       </IconButton>
-                      <IconButton size="sm" onClick={() => handleDelete(student)} title="Delete Student" className="text-red-500 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/50">
-                        <TrashIcon className="w-5 h-5" />
-                      </IconButton>
-                    </>
-                  )}
-                </>
+                    }
+                  >
+                    <DropdownMenuItem onClick={() => handleViewProfile(student.id)}>
+                      <div className="flex items-center">
+                        <UserCircleIcon className="w-4 h-4 mr-2 text-primary-600 dark:text-primary-400" />
+                        <span>View Profile</span>
+                      </div>
+                    </DropdownMenuItem>
+                    {!isReadOnly && (
+                      <>
+                        <DropdownMenuItem onClick={() => handleEdit(student)}>
+                          <div className="flex items-center">
+                            <PencilIcon className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
+                            <span>Edit</span>
+                          </div>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleDelete(student)}
+                          className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        >
+                          <div className="flex items-center">
+                            <TrashIcon className="w-4 h-4 mr-2" />
+                            <span>Delete</span>
+                          </div>
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenu>
                 )}
             />
             <Pagination currentPage={currentPage} totalPages={totalPages > 0 ? totalPages : 1} onPageChange={setCurrentPage} />
@@ -487,7 +512,7 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
             <StudentForm student={selectedStudent} onSave={handleSave} onClose={() => setIsModalOpen(false)} />
           </Modal>
 
-          <CSVUploadModal
+          <ExcelUploadModal
             isOpen={isUploadModalOpen}
             onClose={() => setIsUploadModalOpen(false)}
             onUpload={handleUploadSuccess}

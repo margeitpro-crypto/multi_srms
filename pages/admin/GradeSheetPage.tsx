@@ -76,11 +76,12 @@ const GradeSheetPage: React.FC<{ school?: School }> = ({ school }) => {
 
     const columns = [
         { header: 'S.No.', accessor: (_: Student, index: number) => index + 1 },
-        { header: 'Student Name', accessor: 'name' as const },
-        { header: 'Gender', accessor: 'gender' as const },
+        { header: 'registration_id', accessor: 'registration_id' as const },
         { header: 'Symbol Number', accessor: 'symbol_no' as const },
-        { header: 'Class', accessor: 'grade' as const },
-        { header: 'Year', accessor: 'year' as const },
+        { header: 'Student Name', accessor: 'name' as const },
+        { header: 'dob_bs', accessor: 'dob_bs' as const },
+        { header: 'Gender', accessor: 'gender' as const },
+
     ];
 
     return (
