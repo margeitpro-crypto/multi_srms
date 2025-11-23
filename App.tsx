@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { AppContextProvider } from './context/AppContext';
@@ -7,55 +7,55 @@ import { DataProvider } from './context/DataContext';
 import { PageTitleProvider } from './context/PageTitleContext';
 
 // Layouts
-import DashboardLayout from './layouts/DashboardLayout';
-import PublicLayout from './layouts/PublicLayout';
+const DashboardLayout = React.lazy(() => import('./layouts/DashboardLayout'));
+const PublicLayout = React.lazy(() => import('./layouts/PublicLayout'));
 
 // Public Pages
-import HomePage from './pages/public/HomePage';
-import PortfolioPage from './pages/public/PortfolioPage';
-import LoginPage from './pages/auth/LoginPage';
-import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
-import ResetPasswordPage from './pages/auth/ResetPasswordPage';
+const HomePage = React.lazy(() => import('./pages/public/HomePage'));
+const PortfolioPage = React.lazy(() => import('./pages/public/PortfolioPage'));
+const LoginPage = React.lazy(() => import('./pages/auth/LoginPage'));
+const ForgotPasswordPage = React.lazy(() => import('./pages/auth/ForgotPasswordPage'));
+const ResetPasswordPage = React.lazy(() => import('./pages/auth/ResetPasswordPage'));
 
 // Print Pages
-import PrintMarksheetPage from './pages/print/PrintMarksheetPage';
-import PrintAllMarksheetsPage from './pages/print/PrintAllMarksheetsPage';
-import PrintAdmitCardPage from './pages/print/PrintAdmitCardPage';
-import PrintAllAdmitCardsPage from './pages/print/PrintAllAdmitCardsPage';
+const PrintMarksheetPage = React.lazy(() => import('./pages/print/PrintMarksheetPage'));
+const PrintAllMarksheetsPage = React.lazy(() => import('./pages/print/PrintAllMarksheetsPage'));
+const PrintAdmitCardPage = React.lazy(() => import('./pages/print/PrintAdmitCardPage'));
+const PrintAllAdmitCardsPage = React.lazy(() => import('./pages/print/PrintAllAdmitCardsPage'));
 
 // Common Authenticated Pages
-import StudentProfilePage from './pages/common/StudentProfilePage';
-import StudentAllProfilePage from './pages/common/StudentAllProfilePage';
+const StudentProfilePage = React.lazy(() => import('./pages/common/StudentProfilePage'));
+const StudentAllProfilePage = React.lazy(() => import('./pages/common/StudentAllProfilePage'));
 
 // Admin Pages
-import AdminDashboardPage from './pages/admin/AdminDashboardPage';
-import ManageSchoolsPage from './pages/admin/ManageSchoolsPage';
-import ManageSubjectsPage from './pages/admin/ManageSubjectsPage';
-import ManageStudentsPage from './pages/admin/ManageStudentsPage';
-import SchoolDashboardViewerPage from './pages/admin/SchoolDashboardViewerPage';
-import ChangelogPage from './pages/admin/ChangelogPage';
-import SubjectAssignPage from './pages/admin/SubjectAssignPage';
-import MarksEntryAdminPage from './pages/admin/MarksEntryAdminPage';
-import MarkWiseLedgerPage from './pages/admin/MarkWiseLedgerPage';
-import GradeWiseLedgerPage from './pages/admin/GradeWiseLedgerPage';
-import GradeSheetPage from './pages/admin/GradeSheetPage';
-import AdminSettingsPage from './pages/admin/AdminSettingsPage';
-import SchoolSettingsEditorPage from './pages/admin/SchoolSettingsEditorPage';
-import ManageUserPage from './pages/admin/ManageUserPage';
+const AdminDashboardPage = React.lazy(() => import('./pages/admin/AdminDashboardPage'));
+const ManageSchoolsPage = React.lazy(() => import('./pages/admin/ManageSchoolsPage'));
+const ManageSubjectsPage = React.lazy(() => import('./pages/admin/ManageSubjectsPage'));
+const ManageStudentsPage = React.lazy(() => import('./pages/admin/ManageStudentsPage'));
+const SchoolDashboardViewerPage = React.lazy(() => import('./pages/admin/SchoolDashboardViewerPage'));
+const ChangelogPage = React.lazy(() => import('./pages/admin/ChangelogPage'));
+const SubjectAssignPage = React.lazy(() => import('./pages/admin/SubjectAssignPage'));
+const MarksEntryAdminPage = React.lazy(() => import('./pages/admin/MarksEntryAdminPage'));
+const MarkWiseLedgerPage = React.lazy(() => import('./pages/admin/MarkWiseLedgerPage'));
+const GradeWiseLedgerPage = React.lazy(() => import('./pages/admin/GradeWiseLedgerPage'));
+const GradeSheetPage = React.lazy(() => import('./pages/admin/GradeSheetPage'));
+const AdminSettingsPage = React.lazy(() => import('./pages/admin/AdminSettingsPage'));
+const SchoolSettingsEditorPage = React.lazy(() => import('./pages/admin/SchoolSettingsEditorPage'));
+const ManageUserPage = React.lazy(() => import('./pages/admin/ManageUserPage'));
 
 // School Pages
-import SchoolDashboardPage from './pages/school/SchoolDashboardPage';
-import SchoolManageStudentsPage from './pages/school/SchoolManageStudentsPage';
-import MarksEntrySchoolPage from './pages/school/MarksEntrySchoolPage';
-import SchoolManageSubjectsPage from './pages/school/SchoolManageSubjectsPage';
-import SchoolSubjectAssignPage from './pages/school/SchoolSubjectAssignPage';
-import SchoolMarkWiseLedgerPage from './pages/school/SchoolMarkWiseLedgerPage';
-import SchoolGradeWiseLedgerPage from './pages/school/SchoolGradeWiseLedgerPage';
-import SchoolGradeSheetPage from './pages/school/SchoolGradeSheetPage';
-import SchoolSettingsPage from './pages/school/SchoolSettingsPage';
+const SchoolDashboardPage = React.lazy(() => import('./pages/school/SchoolDashboardPage'));
+const SchoolManageStudentsPage = React.lazy(() => import('./pages/school/SchoolManageStudentsPage'));
+const MarksEntrySchoolPage = React.lazy(() => import('./pages/school/MarksEntrySchoolPage'));
+const SchoolManageSubjectsPage = React.lazy(() => import('./pages/school/SchoolManageSubjectsPage'));
+const SchoolSubjectAssignPage = React.lazy(() => import('./pages/school/SchoolSubjectAssignPage'));
+const SchoolMarkWiseLedgerPage = React.lazy(() => import('./pages/school/SchoolMarkWiseLedgerPage'));
+const SchoolGradeWiseLedgerPage = React.lazy(() => import('./pages/school/SchoolGradeWiseLedgerPage'));
+const SchoolGradeSheetPage = React.lazy(() => import('./pages/school/SchoolGradeSheetPage'));
+const SchoolSettingsPage = React.lazy(() => import('./pages/school/SchoolSettingsPage'));
 
 // Help Page
-import HelpPage from './pages/HelpPage';
+const HelpPage = React.lazy(() => import('./pages/HelpPage'));
 
 // A wrapper for routes that should only be accessible to unauthenticated users.
 const PublicOnlyRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -89,7 +89,8 @@ function AppContent() {
   const { userRole } = useAuth();
 
   return (
-    <Routes>
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
       {/* Public Routes */}
       <Route element={<PublicLayout />}>
         <Route index element={<PublicOnlyRoute><HomePage /></PublicOnlyRoute>} />
@@ -167,9 +168,15 @@ function AppContent() {
        {/* Catch all unhandled routes */}
        <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
   );
 }
 
+const LoadingFallback: React.FC = () => (
+  <div className="flex min-h-[200px] items-center justify-center text-gray-500">
+    Loading…
+  </div>
+);
 
 function App() {
   return (

@@ -1,0 +1,37 @@
+[
+  {
+    "id": 1,
+    "year": 2080,
+    "is_active": true,
+    "created_at": "2025-11-22T23:02:12.206Z",
+    "updated_at": "2025-11-22T23:02:12.206Z"
+  },
+  {
+    "id": 2,
+    "year": 2081,
+    "is_active": true,
+    "created_at": "2025-11-22T23:02:12.216Z",
+    "updated_at": "2025-11-22T23:02:12.216Z"
+  },
+  {
+    "id": 3,
+    "year": 2082,
+    "is_active": true,
+    "created_at": "2025-11-22T23:02:12.217Z",
+    "updated_at": "2025-11-22T23:02:12.217Z"
+  },
+  {
+    "id": 4,
+    "year": 2083,
+    "is_active": true,
+    "created_at": "2025-11-22T23:02:12.217Z",
+    "updated_at": "2025-11-22T23:02:12.217Z"
+  },
+  {
+    "id": 5,
+    "year": 2084,
+    "is_active": true,
+    "created_at": "2025-11-22T23:02:12.218Z",
+    "updated_at": "2025-11-22T23:02:12.218Z"
+  }
+]
