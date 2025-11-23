@@ -16,21 +16,20 @@ import otpRouter from './routes/otpRoutes';
 const app: Application = express();
 const PORT = process.env.PORT || 3002; // Changed to 3002 as per project configuration
 
-// CORS configuration
-const corsOptions = {
-  origin: [
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:3002',
-    'http://192.168.100.3:3000',
-    'http://192.168.100.3:3001',
-    'http://192.168.100.3:3002'
-  ],
-  credentials: true,
-  optionsSuccessStatus: 200
-};
+const ALLOWED_ORIGINS = process.env.CORS_ALLOWED_ORIGINS
+  ? process.env.CORS_ALLOWED_ORIGINS.split(',').map(origin => origin.trim()).filter(Boolean)
+  : ['http://localhost:5173', 'http://localhost:3002'];
 
-app.use(cors(corsOptions));
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+      return callback(null, true);
+    }
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE']
+}));
 
 // Rate limiting
 const limiter = rateLimit({
