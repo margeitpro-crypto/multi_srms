@@ -45,6 +45,7 @@ const ManageUserPage = React.lazy(() => import('./pages/admin/ManageUserPage'));
 
 // School Pages
 const SchoolDashboardPage = React.lazy(() => import('./pages/school/SchoolDashboardPage'));
+const SchoolAdminDashboardPage = React.lazy(() => import('./pages/school/SchoolAdminDashboardPage'));
 const SchoolManageStudentsPage = React.lazy(() => import('./pages/school/SchoolManageStudentsPage'));
 const MarksEntrySchoolPage = React.lazy(() => import('./pages/school/MarksEntrySchoolPage'));
 const SchoolManageSubjectsPage = React.lazy(() => import('./pages/school/SchoolManageSubjectsPage'));
@@ -136,6 +137,7 @@ function AppContent() {
       <Route path="/school/*" element={<ProtectedRoute requiredRole="school"><DashboardLayout /></ProtectedRoute>}>
         <Route index element={<Navigate to="/school/dashboard" replace />} />
         <Route path="dashboard" element={<SchoolDashboardPage />} />
+        <Route path="admin-dashboard" element={<SchoolAdminDashboardPage />} />
         <Route path="students" element={<SchoolManageStudentsPage />} />
         <Route path="subjects" element={<SchoolManageSubjectsPage />} />
         <Route path="assign-subjects" element={<SchoolSubjectAssignPage />} />
