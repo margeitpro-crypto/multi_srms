@@ -1,7 +1,8 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import multer from 'multer';
 import * as XLSX from 'xlsx';
 import path from 'path';
+import { AuthRequest } from '../middleware/authMiddleware';
 
 // Configure multer for file upload
 const storage = multer.diskStorage({
@@ -14,7 +15,7 @@ const storage = multer.diskStorage({
   }
 });
 
-const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   // Accept only Excel files
   if (file.mimetype === 'application/vnd.ms-excel' || 
       file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
@@ -48,7 +49,6 @@ const parseExcelFile = (filePath: string): any[] => {
     const worksheet = workbook.Sheets[firstSheetName];
     
     // Convert to JSON with proper formatting
-    // Using raw: true to get raw values and preserve numbers as strings
     const jsonData = XLSX.utils.sheet_to_json(worksheet, {
       raw: false, // This ensures numbers are treated as strings
       defval: '', // Default value for empty cells
@@ -62,40 +62,47 @@ const parseExcelFile = (filePath: string): any[] => {
 };
 
 // Controller function to handle Excel file upload
-export const uploadExcelFile = async (req: Request, res: Response) => {
+export const uploadExcelFile = async (req: AuthRequest, res: Response) => {
   try {
-    // Check if file was uploaded
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
     if (!req.file) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'No file uploaded' 
-      });
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
     }
     
-    // Parse the Excel file
+    let schoolId: number | null = null;
+    if (user.role === 'school') {
+      schoolId = user.school_id;
+    } else if (user.role === 'admin') {
+      schoolId = req.body.school_id;
+      if (!schoolId) {
+        return res.status(400).json({ success: false, message: 'school_id is required for admin users' });
+      }
+    }
+
+    if (!schoolId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
     const studentsData = parseExcelFile(req.file.path);
     
-    // Process the student data (example implementation)
     const processedStudents = studentsData.map((row: any) => {
       return {
-        // Ensure numeric fields are treated as strings
+        school_id: schoolId,
         registrationId: String(row['Registration ID'] || row['registration_id'] || ''),
         name: String(row['Name'] || row['name'] || ''),
         phone: String(row['Phone'] || row['phone'] || row['Mobile'] || ''),
-        // Add other fields as needed
-        // Preserve leading zeros and avoid scientific notation
         symbolNo: String(row['Symbol No'] || row['symbol_no'] || ''),
-        // Handle any other numeric fields similarly
       };
     });
-    
-    // Here you would typically save to database
-    // For example:
-    // await saveStudentsToDatabase(processedStudents);
     
     res.status(200).json({
       success: true,
       message: 'File uploaded and parsed successfully',
+      schoolId: schoolId,
       data: processedStudents,
       count: processedStudents.length
     });
@@ -110,39 +117,49 @@ export const uploadExcelFile = async (req: Request, res: Response) => {
 };
 
 // Alternative approach with more control over data types
-export const uploadExcelFileAdvanced = async (req: Request, res: Response) => {
+export const uploadExcelFileAdvanced = async (req: AuthRequest, res: Response) => {
   try {
-    // Type assertion to access file property
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
     const file = (req as any).file;
     
     if (!file) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'No file uploaded' 
-      });
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    let schoolId: number | null = null;
+    if (user.role === 'school') {
+      schoolId = user.school_id;
+    } else if (user.role === 'admin') {
+      schoolId = req.body.school_id;
+      if (!schoolId) {
+        return res.status(400).json({ success: false, message: 'school_id is required for admin users' });
+      }
+    }
+
+    if (!schoolId) {
+      return res.status(403).json({ error: 'Access denied' });
     }
     
-    // Read workbook with more control
     const workbook = XLSX.readFile(file.path, {
       cellDates: true,
-      cellNF: true, // Capture number formats
+      cellNF: true,
       cellText: true
     });
     
     const firstSheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[firstSheetName];
     
-    // Get sheet range
     const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
     
-    // Process row by row to have full control
     const students: any[] = [];
     
-    // Start from row 1 to skip header (assuming row 0 is header)
     for (let rowNum = 1; rowNum <= range.e.r; rowNum++) {
-      const row: any = {};
+      const row: any = { school_id: schoolId };
       
-      // Process each column
       for (let colNum = range.s.c; colNum <= range.e.c; colNum++) {
         const cellAddress = XLSX.utils.encode_cell({ r: rowNum, c: colNum });
         const headerAddress = XLSX.utils.encode_cell({ r: 0, c: colNum });
@@ -154,28 +171,21 @@ export const uploadExcelFileAdvanced = async (req: Request, res: Response) => {
           const headerName = String(headerCell.v);
           let cellValue: any = '';
           
-          // Preserve numeric values as strings to avoid scientific notation
           if (cell.t === 'n') {
-            // For numbers, use the formatted value if available, otherwise raw value
             cellValue = cell.w ? cell.w : String(cell.v);
           } else if (cell.t === 's') {
-            // String values
             cellValue = cell.v;
           } else if (cell.t === 'd') {
-            // Date values
             cellValue = cell.w ? cell.w : cell.v.toISOString().split('T')[0];
           } else {
-            // Other types
             cellValue = cell.v ? String(cell.v) : '';
           }
           
-          // Ensure all values are strings to prevent scientific notation
           row[headerName] = String(cellValue);
         }
       }
       
-      // Only add non-empty rows
-      if (Object.keys(row).length > 0) {
+      if (Object.keys(row).length > 1) { // Check for more than just school_id
         students.push(row);
       }
     }
@@ -183,6 +193,7 @@ export const uploadExcelFileAdvanced = async (req: Request, res: Response) => {
     res.status(200).json({
       success: true,
       message: 'File uploaded and parsed successfully',
+      schoolId: schoolId,
       data: students,
       count: students.length
     });

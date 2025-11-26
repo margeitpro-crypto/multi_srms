@@ -10,7 +10,7 @@ const envFile = process.env.ENV_FILE
     ? '.env.production'
     : envMode === 'supabase'
     ? '.env.supabase'
-    : '.env');
+    : '.env.supabase'); // Default to Supabase environment
 dotenv.config({ path: envFile });
 
 const basePoolOptions = {
@@ -19,24 +19,18 @@ const basePoolOptions = {
   connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || '2000', 10)
 };
 
-const poolConfig: PoolConfig = process.env.SUPABASE_DB_URL
-  ? {
-      connectionString: process.env.SUPABASE_DB_URL,
-      ssl: { rejectUnauthorized: false },
-      ...basePoolOptions
-    }
-  : {
-      host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT || '5432', 10),
-      user: process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASS || 'root', // Default to 'root' password
-      database: process.env.DB_NAME || 'multi_srms_new',
-      // Enable SSL for Supabase connections when set via individual vars
-      ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
-      ...basePoolOptions
-    };
+// Always use Supabase database connection
+if (!process.env.SUPABASE_DB_URL) {
+  throw new Error('SUPABASE_DB_URL is required. Please check your .env.supabase configuration.');
+}
 
-// Create a PostgreSQL connection pool
+const poolConfig: PoolConfig = {
+  connectionString: process.env.SUPABASE_DB_URL,
+  ssl: { rejectUnauthorized: false },
+  ...basePoolOptions
+};
+
+// Create a PostgreSQL connection pool (Supabase uses PostgreSQL)
 const pool = new Pool(poolConfig);
 
 export default pool;

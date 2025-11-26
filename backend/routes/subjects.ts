@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { subjectsService } from '../services/dbService';
+import { requireAdmin } from '../middleware/authMiddleware';
 
 const router = Router();
 
@@ -29,7 +30,7 @@ router.get('/grade/:grade', async (req: Request, res: Response) => {
 });
 
 // POST /api/subjects - Create a new subject
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', requireAdmin, async (req: Request, res: Response) => {
   try {
     const subjectData = req.body;
     // Validate required fields
@@ -76,7 +77,7 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // DELETE /api/subjects/:id - Delete a subject
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {

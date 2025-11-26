@@ -21,15 +21,22 @@ const GradeSheetPage: React.FC<{ school?: School }> = ({ school }) => {
     const navigate = useNavigate();
     const { addToast } = useAppContext();
     // FIX: Get data from the central DataContext.
-    const { schools: MOCK_SCHOOLS, students: MOCK_ADMIN_STUDENTS, academicYears, marksRefreshTrigger, appSettings } = useData();
+    const { schools, students, academicYears, marksRefreshTrigger, appSettings } = useData();
 
     const [selectedSchoolId, setSelectedSchoolId] = useState<string>(school?.id.toString() || '');
-    const [selectedYear, setSelectedYear] = useState('2082');
+    const [selectedYear, setSelectedYear] = useState(appSettings.academicYear || '2082');
     const [selectedClass, setSelectedClass] = useState('11');
     const [isLoading, setIsLoading] = useState(false);
     const [loadedStudents, setLoadedStudents] = useState<Student[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [showHeader, setShowHeader] = useState(true);
+
+    // Effect to update selectedYear when appSettings change
+    useEffect(() => {
+        if (appSettings.academicYear) {
+            setSelectedYear(appSettings.academicYear);
+        }
+    }, [appSettings.academicYear]);
 
     // Add useEffect to trigger reload when marks are updated
     useEffect(() => {
@@ -43,13 +50,11 @@ const GradeSheetPage: React.FC<{ school?: School }> = ({ school }) => {
         if (!selectedSchoolId) return;
         setIsLoading(true);
         setLoadedStudents([]);
-        setTimeout(() => {
-            const students = MOCK_ADMIN_STUDENTS.filter(
-                s => s.school_id.toString() === selectedSchoolId && s.year.toString() === selectedYear && s.grade === selectedClass
-            );
-            setLoadedStudents(students);
-            setIsLoading(false);
-        }, 100);
+        const filteredStudents = students.filter(
+            s => s.school_id.toString() === selectedSchoolId && s.year.toString() === selectedYear && s.grade === selectedClass
+        );
+        setLoadedStudents(filteredStudents);
+        setIsLoading(false);
     };
 
     const handleResultClick = (studentId: string) => {
@@ -112,7 +117,7 @@ const GradeSheetPage: React.FC<{ school?: School }> = ({ school }) => {
                         ) : (
                             <Select id="school-selector" label="Selected School*" value={selectedSchoolId} onChange={(e) => setSelectedSchoolId(e.target.value)}>
                                 <option value="">-- Select a School --</option>
-                                {MOCK_SCHOOLS.map(s => (
+                                {schools.map(s => (
                                     <option key={s.id} value={s.id}>{s.iemisCode}-{s.name}</option>
                                 ))}
                             </Select>

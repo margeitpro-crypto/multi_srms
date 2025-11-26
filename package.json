@@ -29,7 +29,6 @@
     "migrate:data-to-supabase": "tsx scripts/migrate-data-to-supabase.ts",
     "load:supabase-env": "tsx scripts/load-supabase-env.ts",
     "test:supabase-connection": "tsx scripts/test-supabase-connection.ts",
-    "test:postgres-connection": "tsx scripts/test-postgres-connection.ts",
     "check:local-data": "tsx scripts/check-local-data.ts",
     "prepare:migration": "tsx scripts/prepare-migration.ts",
     "import:migration-data": "tsx scripts/import-migration-data.ts",
@@ -85,7 +84,7 @@
     "@types/nodemailer": "^7.0.4",
     "@types/pg": "^8.15.6",
     "@vitejs/plugin-react": "^5.0.0",
-    "supabase": "^2.58.5",
+    "supabase": "^2.62.5",
     "tsx": "^4.20.6",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"

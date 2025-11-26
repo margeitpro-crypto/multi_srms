@@ -1,26 +1,35 @@
-import { Router, Request, Response } from 'express';
-import { subjectAssignmentsService } from '../services/dbService';
+import { Router, Response } from 'express';
+import { subjectAssignmentsService, studentsService } from '../services/dbService';
+import { AuthRequest } from '../middleware/authMiddleware';
 
 const router = Router();
 
 // GET /api/subject-assignments/:studentId/:year - Get subject assignments for a student in a specific year
-router.get('/:studentId/:year', async (req: Request, res: Response) => {
+router.get('/:studentId/:year', async (req: AuthRequest, res: Response) => {
   try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
     const studentSystemId = req.params.studentId;
     const academicYear = parseInt(req.params.year);
     
     if (!studentSystemId || isNaN(academicYear)) {
       return res.status(400).json({ error: 'Invalid student ID or academic year' });
     }
-    
-    // Get the database ID for the student
-    const studentId = await subjectAssignmentsService.getStudentDatabaseIdBySystemId(studentSystemId);
-    if (studentId === null) {
+
+    const student = await studentsService.getStudentBySystemId(studentSystemId);
+    if (!student) {
       return res.status(404).json({ error: 'Student not found' });
     }
+
+    if (user.role === 'school' && user.school_id !== student.school_id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
     
-    const subjectIds = await subjectAssignmentsService.getStudentAssignments(studentId, academicYear);
-    const extraCreditSubjectId = await subjectAssignmentsService.getStudentExtraCreditAssignment(studentId, academicYear);
+    const subjectIds = await subjectAssignmentsService.getStudentAssignments(student.id, academicYear);
+    const extraCreditSubjectId = await subjectAssignmentsService.getStudentExtraCreditAssignment(student.id, academicYear);
     
     res.json({
       subjectIds,
@@ -33,8 +42,13 @@ router.get('/:studentId/:year', async (req: Request, res: Response) => {
 });
 
 // POST /api/subject-assignments/:studentId/:year - Assign subjects to a student for a specific year
-router.post('/:studentId/:year', async (req: Request, res: Response) => {
+router.post('/:studentId/:year', async (req: AuthRequest, res: Response) => {
   try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
     const studentSystemId = req.params.studentId;
     const academicYear = parseInt(req.params.year);
     const { subjectIds, extraCreditSubjectId } = req.body;
@@ -47,23 +61,23 @@ router.post('/:studentId/:year', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'subjectIds must be an array' });
     }
     
-    // Validate that all subjectIds are numbers
     if (subjectIds.some(id => typeof id !== 'number' || isNaN(id))) {
       return res.status(400).json({ error: 'All subject IDs must be valid numbers' });
     }
-    
-    // Get the database ID for the student
-    const studentId = await subjectAssignmentsService.getStudentDatabaseIdBySystemId(studentSystemId);
-    if (studentId === null) {
+
+    const student = await studentsService.getStudentBySystemId(studentSystemId);
+    if (!student) {
       return res.status(404).json({ error: 'Student not found' });
     }
+
+    if (user.role === 'school' && user.school_id !== student.school_id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
     
-    // Assign main subjects
-    await subjectAssignmentsService.assignSubjectsToStudent(studentId, subjectIds, academicYear);
+    await subjectAssignmentsService.assignSubjectsToStudent(student.id, subjectIds, academicYear);
     
-    // Assign extra credit subject if provided
     await subjectAssignmentsService.assignExtraCreditSubjectToStudent(
-      studentId, 
+      student.id, 
       extraCreditSubjectId !== undefined ? extraCreditSubjectId : null, 
       academicYear
     );
@@ -80,8 +94,13 @@ router.post('/:studentId/:year', async (req: Request, res: Response) => {
 });
 
 // DELETE /api/subject-assignments/:studentId/:year - Delete subject assignments for a student in a specific year
-router.delete('/:studentId/:year', async (req: Request, res: Response) => {
+router.delete('/:studentId/:year', async (req: AuthRequest, res: Response) => {
   try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
     const studentSystemId = req.params.studentId;
     const academicYear = parseInt(req.params.year);
     
@@ -89,17 +108,18 @@ router.delete('/:studentId/:year', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid student ID or academic year' });
     }
     
-    // Get the database ID for the student
-    const studentId = await subjectAssignmentsService.getStudentDatabaseIdBySystemId(studentSystemId);
-    if (studentId === null) {
+    const student = await studentsService.getStudentBySystemId(studentSystemId);
+    if (!student) {
       return res.status(404).json({ error: 'Student not found' });
     }
+
+    if (user.role === 'school' && user.school_id !== student.school_id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
     
-    // Delete main subject assignments
-    await subjectAssignmentsService.deleteStudentAssignments(studentId, academicYear);
+    await subjectAssignmentsService.deleteStudentAssignments(student.id, academicYear);
     
-    // Delete extra credit subject assignment
-    await subjectAssignmentsService.deleteStudentExtraCreditAssignment(studentId, academicYear);
+    await subjectAssignmentsService.deleteStudentExtraCreditAssignment(student.id, academicYear);
     
     res.status(200).json({ 
       message: 'Subject assignments deleted successfully'

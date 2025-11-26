@@ -21,25 +21,11 @@ async function initializeDbPool() {
   }
 }
 
-import { Pool, QueryResult } from 'pg';
 import logger from './logger';
-
-// Create a PostgreSQL connection pool
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASS || 'root', // Default to 'root' password
-  database: process.env.DB_NAME || 'multi_srms_new',
-  max: 20, // Maximum number of clients in the pool
-  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-  connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
-  // Enable SSL for Supabase connections
-  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
-});
+import pool from '../../config/db';
 
 // Generic query function
-export async function query(text: string, params?: any[]): Promise<QueryResult> {
+export async function query(text: string, params?: any[]) {
   try {
     const start = Date.now();
     const res = await pool.query(text, params);
@@ -269,6 +255,33 @@ export const studentsService = {
     const student = result.rows[0];
     return {
       id: student.student_system_id, // Using student_system_id as the frontend id
+      school_id: student.school_id,
+      name: student.name,
+      dob: student.dob,
+      gender: student.gender,
+      grade: student.grade,
+      roll_no: student.roll_no,
+      photo_url: student.photo_url,
+      created_at: student.created_at,
+      year: student.academic_year,
+      symbol_no: student.symbol_no,
+      alph: student.alph,
+      registration_id: student.registration_id,
+      dob_bs: student.dob_bs,
+      father_name: student.father_name,
+      mother_name: student.mother_name,
+      mobile_no: student.mobile_no
+    };
+  },
+
+  // Get student by System ID
+  async getStudentBySystemId(studentSystemId: string) {
+    const result = await query('SELECT * FROM students WHERE student_system_id = $1', [studentSystemId]);
+    if (!result.rows[0]) return null;
+    
+    const student = result.rows[0];
+    return {
+      id: student.id, 
       school_id: student.school_id,
       name: student.name,
       dob: student.dob,
@@ -628,31 +641,21 @@ export const marksService = {
       [studentId, academicYear]
     );
     
-    // Then, insert the new marks
+    // Then, insert the new marks one by one to avoid parameter indexing issues
     const subjectIds = Object.keys(marks).map(Number);
-    if (subjectIds.length > 0) {
-      // Build the values string and parameters correctly
-      const valuesParts: string[] = [];
-      const params: any[] = [studentId, academicYear];
-      
-      subjectIds.forEach((subjectId, index) => {
-        const mark = marks[subjectId];
-        // Add subject_id, theory_obtained, practical_obtained, is_absent
-        valuesParts.push(`($1, $${index * 4 + 3}, $2, $${index * 4 + 4}, $${index * 4 + 5}, $${index * 4 + 6})`);
-        params.push(
+    for (const subjectId of subjectIds) {
+      const mark = marks[subjectId];
+      await query(
+        `INSERT INTO student_marks (student_id, subject_id, academic_year, theory_obtained, practical_obtained, is_absent) 
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          studentId,
           subjectId,
+          academicYear,
           mark.theory || 0,
           mark.practical || 0,
           mark.isAbsent || false
-        );
-      });
-      
-      const values = valuesParts.join(', ');
-      
-      await query(
-        `INSERT INTO student_marks (student_id, subject_id, academic_year, theory_obtained, practical_obtained, is_absent) 
-         VALUES ${values}`,
-        params
+        ]
       );
     }
     

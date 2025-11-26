@@ -1,12 +1,9 @@
 import { Router, Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
 import { createUser, getUserByIemisCode, getAllUsers, updateUser, deleteUser, verifyPassword, getUserById, getUserByEmail, getUsersBySchoolId, updateUserPassword } from '../services/userService';
+import { register, login } from '../services/authService';
 import logger from '../services/logger';
 
 const router = Router();
-
-// JWT secret - in production, use environment variable
-const JWT_SECRET = process.env.JWT_SECRET || 'multi_srms_secret_key';
 
 // GET /api/users - Get all users
 router.get('/', async (req: Request, res: Response) => {
@@ -37,7 +34,7 @@ router.get('/school/:schoolId', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/users/:id - Get a specific user
+// GET /api/users/:id - Get user by ID
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
@@ -47,19 +44,18 @@ router.get('/:id', async (req: Request, res: Response) => {
     
     const user = await getUserById(id);
     if (!user) {
-      logger.warn('User not found', { userId: id });
       return res.status(404).json({ error: 'User not found' });
     }
     
     logger.info('Fetched user by ID', { userId: id });
     res.json(user);
   } catch (err) {
-    logger.error('Error fetching user:', err);
+    logger.error('Error fetching user by ID:', err);
     res.status(500).json({ error: 'Failed to fetch user' });
   }
 });
 
-// POST /api/users - Create a new user
+// POST /api/users - Create a new user (admin only)
 router.post('/', async (req: Request, res: Response) => {
   try {
     const { iemis_code, email, password, role, school_id } = req.body;
@@ -69,41 +65,20 @@ router.post('/', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'IEMIS Code, password, and role are required' });
     }
     
-    // Check if user already exists by IEMIS code
-    const existingUserByIemis = await getUserByIemisCode(iemis_code);
-    if (existingUserByIemis) {
-      logger.warn('User with IEMIS Code already exists', { iemisCode: iemis_code });
-      return res.status(409).json({ error: 'User with this IEMIS Code already exists' });
-    }
-    
-    // Check if user already exists by email (if email is provided)
-    if (email) {
-      const existingUserByEmail = await getUserByEmail(email);
-      if (existingUserByEmail) {
-        logger.warn('User with email already exists', { email });
-        return res.status(409).json({ error: 'User with this email already exists' });
-      }
-    }
-    
-    // Create new user
     const newUser = await createUser({ iemis_code, email, password, role, school_id });
-    logger.info('Created new user', { userId: newUser.id, iemisCode: newUser.iemis_code });
+    logger.info('User created', { userId: newUser.id });
     res.status(201).json(newUser);
   } catch (err: any) {
     logger.error('Error creating user:', err);
-    if (err.code === '23505') {
-      // Handle unique constraint violation
-      if (err.detail && err.detail.includes('iemis_code')) {
-        return res.status(409).json({ error: 'User with this IEMIS Code already exists' });
-      } else if (err.detail && err.detail.includes('email')) {
-        return res.status(409).json({ error: 'User with this email already exists' });
-      }
+    if (err.message && err.message.includes('duplicate key')) {
+      res.status(400).json({ error: 'User with this IEMIS Code already exists' });
+    } else {
+      res.status(500).json({ error: 'Failed to create user' });
     }
-    res.status(500).json({ error: 'Failed to create user' });
   }
 });
 
-// PUT /api/users/:id - Update a user
+// PUT /api/users/:id - Update user
 router.put('/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
@@ -112,30 +87,21 @@ router.put('/:id', async (req: Request, res: Response) => {
     }
     
     const { iemis_code, email, role, school_id } = req.body;
-    const updatedUser = await updateUser(id, { iemis_code, email, role, school_id });
     
+    const updatedUser = await updateUser(id, { iemis_code, email, role, school_id });
     if (!updatedUser) {
-      logger.warn('User not found for update', { userId: id });
       return res.status(404).json({ error: 'User not found' });
     }
     
-    logger.info('Updated user', { userId: id });
+    logger.info('User updated', { userId: id });
     res.json(updatedUser);
-  } catch (err: any) {
+  } catch (err) {
     logger.error('Error updating user:', err);
-    if (err.code === '23505') {
-      // Handle unique constraint violation
-      if (err.detail && err.detail.includes('iemis_code')) {
-        return res.status(409).json({ error: 'User with this IEMIS Code already exists' });
-      } else if (err.detail && err.detail.includes('email')) {
-        return res.status(409).json({ error: 'User with this email already exists' });
-      }
-    }
     res.status(500).json({ error: 'Failed to update user' });
   }
 });
 
-// DELETE /api/users/:id - Delete a user
+// DELETE /api/users/:id - Delete user
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
@@ -144,13 +110,11 @@ router.delete('/:id', async (req: Request, res: Response) => {
     }
     
     const deletedUser = await deleteUser(id);
-    
     if (!deletedUser) {
-      logger.warn('User not found for deletion', { userId: id });
       return res.status(404).json({ error: 'User not found' });
     }
     
-    logger.info('Deleted user', { userId: id });
+    logger.info('User deleted', { userId: id });
     res.json({ message: 'User deleted successfully' });
   } catch (err) {
     logger.error('Error deleting user:', err);
@@ -161,60 +125,32 @@ router.delete('/:id', async (req: Request, res: Response) => {
 // POST /api/users/login - User login
 router.post('/login', async (req: Request, res: Response) => {
   try {
-    const { email, iemisCode, password } = req.body;
+    const { identifier, password } = req.body;
     
     // Validate required fields
-    if (!password || (!email && !iemisCode)) {
-      return res.status(400).json({ error: 'Email or IEMIS Code and password are required' });
+    if (!identifier || !password) {
+      return res.status(400).json({ error: 'Identifier and password are required' });
     }
     
-    // Get user by email or IEMIS Code
-    let user = null;
-    if (email) {
-      user = await getUserByEmail(email);
-      if (!user) {
-        logger.warn('Login failed - invalid email', { email });
-        return res.status(401).json({ error: 'Invalid credentials' });
-      }
-    } else if (iemisCode) {
-      user = await getUserByIemisCode(iemisCode);
-      if (!user) {
-        logger.warn('Login failed - invalid IEMIS code', { iemisCode });
-        return res.status(401).json({ error: 'Invalid credentials' });
-      }
+    // Attempt to login
+    const { user, token, error } = await login(identifier, password);
+    
+    if (error) {
+      logger.warn('Login failed', { identifier, error });
+      return res.status(401).json({ error });
     }
     
-    // Verify that the user exists
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+    if (!user || !token) {
+      logger.warn('Login failed - unexpected error', { identifier });
+      return res.status(401).json({ error: 'Login failed' });
     }
-    
-    // Verify password
-    const isPasswordValid = await verifyPassword(password, user.password_hash);
-    if (!isPasswordValid) {
-      logger.warn('Login failed - invalid password', { userId: user.id });
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-    
-    // Generate JWT token
-    const token = jwt.sign(
-      { 
-        id: user.id, 
-        iemis_code: user.iemis_code, 
-        email: user.email, 
-        role: user.role,
-        school_id: user.school_id
-      }, 
-      JWT_SECRET, 
-      { expiresIn: '24h' }
-    );
     
     logger.info('User login successful', { userId: user.id, role: user.role });
     
     // Return token and user info
     res.json({ 
       message: 'Login successful',
-      token: token,
+      token,
       user: {
         id: user.id,
         iemis_code: user.iemis_code,
@@ -226,6 +162,47 @@ router.post('/login', async (req: Request, res: Response) => {
   } catch (err) {
     logger.error('Error during login:', err);
     res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// POST /api/users/register - User registration
+router.post('/register', async (req: Request, res: Response) => {
+  try {
+    const { iemis_code, email, password, role, school_id } = req.body;
+    
+    // Validate required fields
+    if (!iemis_code || !password || !role) {
+      return res.status(400).json({ error: 'IEMIS Code, password, and role are required' });
+    }
+    
+    // Register user
+    const { user, error } = await register({ iemis_code, email, password, role, school_id });
+    
+    if (error) {
+      logger.warn('Registration failed', { iemis_code, email, error });
+      return res.status(400).json({ error });
+    }
+    
+    if (!user) {
+      logger.error('Registration failed - unexpected error', { iemis_code, email });
+      return res.status(500).json({ error: 'Registration failed' });
+    }
+    
+    logger.info('User registration successful', { userId: user.id, role: user.role });
+    
+    res.status(201).json({ 
+      message: 'Registration successful',
+      user: {
+        id: user.id,
+        iemis_code: user.iemis_code,
+        email: user.email,
+        role: user.role,
+        school_id: user.school_id
+      }
+    });
+  } catch (err) {
+    logger.error('Error during registration:', err);
+    res.status(500).json({ error: 'Registration failed' });
   }
 });
 

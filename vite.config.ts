@@ -12,11 +12,22 @@ export default defineConfig(({ mode }) => {
           host: 'localhost',
           protocol: 'ws',
         },
+        proxy: {
+          '/api': {
+            target: 'http://localhost:3002',
+            changeOrigin: true,
+            secure: false,
+          }
+        }
       },
       plugins: [react()],
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+        'process.env.SUPABASE_URL': JSON.stringify(env.SUPABASE_URL),
+        'process.env.SUPABASE_KEY': JSON.stringify(env.SUPABASE_KEY),
+        'process.env.NEXT_PUBLIC_SUPABASE_URL': JSON.stringify(env.NEXT_PUBLIC_SUPABASE_URL),
+        'process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY': JSON.stringify(env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY)
       },
       resolve: {
         alias: {

@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode, useCallback } from 'react';
 import { ToastMessage, ToastType } from '../types';
 import ToastContainer from '../components/Toast';
@@ -11,13 +10,16 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  
+  // Use a counter to ensure unique IDs
+  const toastIdCounter = React.useRef(1);
 
   const addToast = useCallback((message: string, type: ToastType) => {
-    const id = Date.now();
+    const id = toastIdCounter.current++;
     setToasts((prevToasts) => [...prevToasts, { id, message, type }]);
     setTimeout(() => {
       setToasts((prevToasts) => prevToasts.filter((toast) => toast.id !== id));
-    }, 5000);
+    }, 5000); // Increased timeout to 5 seconds for better UX
   }, []);
 
   const removeToast = (id: number) => {

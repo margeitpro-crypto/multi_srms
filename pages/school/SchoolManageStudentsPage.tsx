@@ -9,8 +9,10 @@ const SchoolManageStudentsPage: React.FC = () => {
   const { loggedInSchool } = useAuth();
   const { schoolPageVisibility } = useData();
 
-  // Set the page title
-  setPageTitle('Manage Students');
+  // Set the page title after the component has rendered
+  useEffect(() => {
+    setPageTitle('Manage Students');
+  }, [setPageTitle]);
 
   // Check if the page should be read-only
   const isReadOnly = schoolPageVisibility?.students === 'read-only' || schoolPageVisibility?.students === 'hidden';

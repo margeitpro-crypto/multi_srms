@@ -5,6 +5,7 @@ import Select from '../../components/Select';
 import Button from '../../components/Button';
 import Loader from '../../components/Loader';
 import { useData } from '../../context/DataContext';
+import { useAppContext } from '../../context/AppContext'; // Add this import
 import { PrinterIcon } from '../../components/icons/PrinterIcon';
 import { DocumentArrowDownIcon } from '../../components/icons/DocumentArrowDownIcon';
 import { formatToYYMMDD } from '../../utils/nepaliDateConverter';
@@ -44,6 +45,7 @@ interface LedgerData {
 
 const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
     const { setPageTitle } = usePageTitle();
+    const { addToast } = useAppContext(); // Get addToast from AppContext
     useEffect(() => {
         setPageTitle('Grade Wise Ledger');
     }, [setPageTitle]);
@@ -60,14 +62,51 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
     }, []);
     
     // FIX: Get data from the central DataContext, including assignments.
-    const { schools, students: allStudents, subjects: allSubjects, grades: allGrades, assignments, academicYears, gradesRefreshTrigger, appSettings } = useData();
+    const { schools, students, subjects, grades: allGrades, assignments, academicYears, gradesRefreshTrigger, appSettings, loadAssignmentsForStudents, loadMarksForStudents } = useData();
 
     const [selectedSchoolId, setSelectedSchoolId] = useState<string>(school?.id.toString() || '');
-    const [selectedYear, setSelectedYear] = useState('2082');
+    const [selectedYear, setSelectedYear] = useState(appSettings.academicYear || '2082');
     const [selectedClass, setSelectedClass] = useState('11');
     
     const [isLoading, setIsLoading] = useState(false);
     const [ledgerData, setLedgerData] = useState<LedgerData | null>(null);
+    
+    const handleLoad = async () => {
+        if (!selectedSchoolId) return;
+        setIsLoading(true);
+        setLedgerData(null);
+        
+        try {
+            const currentSchool = schools.find(s => s.id.toString() === selectedSchoolId);
+            if (currentSchool) {
+                const filteredStudents = students.filter(
+                    s => s.school_id.toString() === selectedSchoolId && s.year.toString() === selectedYear && s.grade === selectedClass
+                );
+                
+                if (filteredStudents.length === 0) {
+                    addToast("No students found for the selected criteria.", "info");
+                    setIsLoading(false);
+                    return;
+                }
+                
+                // Load assignments and marks for the filtered students
+                const studentIdsToLoad = filteredStudents.map(s => s.id);
+                await loadAssignmentsForStudents(studentIdsToLoad, selectedYear);
+                await loadMarksForStudents(studentIdsToLoad, selectedYear);
+                
+                const availableSubjects = subjects;
+                setLedgerData({ school: currentSchool, students: filteredStudents, subjects: availableSubjects });
+                
+                addToast(`Loaded ${filteredStudents.length} students for Grade Wise Ledger.`, 'info');
+            }
+        } catch (error: any) {
+            console.error('Error loading data:', error);
+            const errorMessage = error.response?.data?.error || error.message || 'Failed to load data. Please try again.';
+            addToast(`Error: ${errorMessage}`, 'error');
+        } finally {
+            setIsLoading(false);
+        }
+    };
     
     // Auto-select school if only one school exists and none is selected
     useEffect(() => {
@@ -77,6 +116,13 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
             setSelectedSchoolId(school.id.toString());
         }
     }, [schools, school, selectedSchoolId]);
+
+    // Effect to update selectedYear when appSettings change
+    useEffect(() => {
+        if (appSettings.academicYear) {
+            setSelectedYear(appSettings.academicYear);
+        }
+    }, [appSettings.academicYear]);
     
     // Automatically load data when component mounts and when dependencies are ready
     useEffect(() => {
@@ -86,22 +132,13 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
         }
     }, [selectedSchoolId, selectedYear, selectedClass, ledgerData, isLoading]);
 
-    const handleLoad = () => {
-        if (!selectedSchoolId) return;
-        setIsLoading(true);
-        setLedgerData(null);
-        setTimeout(() => {
-            const currentSchool = schools.find(s => s.id.toString() === selectedSchoolId);
-            if (currentSchool) {
-                const students = allStudents.filter(
-                    s => s.school_id.toString() === selectedSchoolId && s.year.toString() === selectedYear && s.grade === selectedClass
-                );
-                const subjects = allSubjects; 
-                setLedgerData({ school: currentSchool, students, subjects });
-            }
-            setIsLoading(false);
-        }, 100); // Reduced delay for better UX
-    };
+    // Add useEffect to trigger reload when grades are updated
+    useEffect(() => {
+        // This will trigger whenever grades are updated
+        if (selectedSchoolId && selectedYear && selectedClass) {
+            handleLoad();
+        }
+    }, [gradesRefreshTrigger, selectedSchoolId, selectedYear, selectedClass]); // Add gradesRefreshTrigger as dependency
     
     // Memoize the ledger data to prevent unnecessary re-renders
     const processedLedgerData = useMemo(() => {
@@ -121,14 +158,33 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                 studentGrades,
                 assignedSubjectIds
             };
-        });
+        }).filter(student => student.assignedSubjectIds.size > 0); // Only include students with subject assignments
         
         // Filter subjects to only include those assigned to at least one student
         const assignedSubjects = ledgerData.subjects.filter(subject => assignedSubjectIdsSet.has(subject.id));
         
+        // Sort subjects in the specified order: Mathematics, Physics, Chemistry, Biology, English
+        const subjectOrder = ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'English'];
+        const sortedSubjects = [...assignedSubjects].sort((a, b) => {
+            const indexA = subjectOrder.indexOf(a.name);
+            const indexB = subjectOrder.indexOf(b.name);
+            
+            // If both subjects are in our specified order, sort by that order
+            if (indexA !== -1 && indexB !== -1) {
+                return indexA - indexB;
+            }
+            
+            // If only one is in our specified order, it comes first
+            if (indexA !== -1) return -1;
+            if (indexB !== -1) return 1;
+            
+            // If neither is in our specified order, sort alphabetically
+            return a.name.localeCompare(b.name);
+        });
+        
         return {
             ...ledgerData,
-            subjects: assignedSubjects,
+            subjects: sortedSubjects,
             students: studentsWithGrades
         };
     }, [ledgerData, allGrades, assignments, gradesRefreshTrigger]);
@@ -140,9 +196,9 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
         // Create Excel content
         let csvContent = "S.No.,School Code,School Name,Student Name,DOB,Symbol Number";
         
-        // Add subject headers
+        // Add subject headers (TH first, then IN)
         processedLedgerData.subjects.forEach(subject => {
-            csvContent += `,${subject.name} (IN),${subject.name} (TH)`;
+            csvContent += `,${subject.name} (TH),${subject.name} (IN)`;
         });
         
         csvContent += ",Final GPA\n";
@@ -151,13 +207,13 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
         processedLedgerData.students.forEach((student, index) => {
             csvContent += `${index + 1},${processedLedgerData.school.iemisCode},"${processedLedgerData.school.name}","${student.name}","${formatADDate(student.dob)}",${student.symbol_no}`;
             
-            // Add subject grades
+            // Add subject grades (TH first, then IN)
             processedLedgerData.subjects.forEach(subject => {
                 const isAssigned = student.assignedSubjectIds.has(subject.id);
                 const gradeInfo = student.studentGrades?.subjects[subject.id];
                 
                 if (isAssigned && gradeInfo) {
-                    csvContent += `,${gradeInfo.in || 'NG'},${gradeInfo.th || 'NG'}`;
+                    csvContent += `,${gradeInfo.th || 'NG'},${gradeInfo.in || 'NG'}`;
                 } else {
                     csvContent += ",-,";
                 }
@@ -241,7 +297,6 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                                     <th rowSpan={2} className="border p-2 dark:border-gray-600">School Code</th>
                                     <th rowSpan={2} className="border p-2 dark:border-gray-600 min-w-32">Student Name</th>
                                     
-
                                     <th rowSpan={2} className="border p-2 dark:border-gray-600">Symbol Number</th>
                                     {processedLedgerData.subjects.map(subject => (
                                         <th key={subject.id} colSpan={2} className="border p-2 dark:border-gray-600 text-center min-w-24">{subject.name}</th>
@@ -251,8 +306,8 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                                 <tr>
                                     {processedLedgerData.subjects.map(subject => (
                                         <React.Fragment key={subject.id}>
-                                            <th className="border p-2 dark:border-gray-600 text-center">IN</th>
                                             <th className="border p-2 dark:border-gray-600 text-center">TH</th>
+                                            <th className="border p-2 dark:border-gray-600 text-center">IN</th>
                                         </React.Fragment>
                                     ))}
                                 </tr>
@@ -262,19 +317,16 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                                     return (
                                         <tr key={student.id} className="hover:bg-gray-50 dark:hover:bg-gray-600/50">
                                             <td className="border p-2 dark:border-gray-600">{index + 1}</td>
-
                                             <td className="border p-2 dark:border-gray-600">{processedLedgerData.school.iemisCode}</td>
                                             <td className="border p-2 dark:border-gray-600">{student.name}</td>
-                                            
-
                                             <td className="border p-2 dark:border-gray-600">{student.symbol_no}</td>
                                             {processedLedgerData.subjects.map(subject => {
                                                 const isAssigned = student.assignedSubjectIds.has(subject.id);
                                                 const gradeInfo = student.studentGrades?.subjects[subject.id];
                                                 return (
                                                     <React.Fragment key={subject.id}>
-                                                        <td className="border p-2 dark:border-gray-600 text-center">{isAssigned ? (gradeInfo?.in || 'NG') : '-'}</td>
                                                         <td className="border p-2 dark:border-gray-600 text-center">{isAssigned ? (gradeInfo?.th || 'NG') : '-'}</td>
+                                                        <td className="border p-2 dark:border-gray-600 text-center">{isAssigned ? (gradeInfo?.in || 'NG') : '-'}</td>
                                                     </React.Fragment>
                                                 );
                                             })}
@@ -284,7 +336,7 @@ const GradeWiseLedgerPage: React.FC<{ school?: School }> = ({ school }) => {
                                         </tr>
                                     );
                                 }) : (
-                                    <tr><td colSpan={8 + processedLedgerData.subjects.length * 2 + 1} className="text-center py-8">No students found for the selected criteria.</td></tr>
+                                    <tr><td colSpan={5 + processedLedgerData.subjects.length * 2 + 1} className="text-center py-8">No students found for the selected criteria.</td></tr>
                                 )}
                             </tbody>
                         </table>

@@ -5,329 +5,49 @@ import { Subject, Student, School } from '../../types';
 import { useAppContext } from '../../context/AppContext';
 import { usePageTitle } from '../../context/PageTitleContext';
 import Loader from '../../components/Loader';
-// FIX: Use central data context instead of importing mock data from pages.
-import { useData } from '../../context/DataContext';
+import { useData, MarksMap } from '../../context/DataContext';
 import { getGradeInfoFromPercentage, calculateGradesForStudents } from '../../utils/gradeCalculator';
 import dataService from '../../services/dataService';
 
-// A marks structure for this page
-interface Marks {
+// Define Marks type explicitly if not already defined globally or in types.ts
+type Marks = {
     internal: number;
     theory: number;
-}
-
-// State to hold all marks for all loaded students
-// FIX: Corrected type to avoid conflict between `isAbsent` and subject marks.
-interface StudentMarksEntry {
-    isAbsent: boolean;
-    // FIX: Changed index signature from number to string to match MarksMap type in DataContext.
-    [subjectId: string]: Marks | boolean;
-}
-interface MarksState {
-    [studentId: string]: StudentMarksEntry;
-}
+};
 
 const MarksEntryAdminPage: React.FC<{ school?: School; isReadOnly?: boolean }> = ({ school, isReadOnly = false }) => {
     const { setPageTitle } = usePageTitle();
-    useEffect(() => {
-        setPageTitle('Marks Entry');
-    }, [setPageTitle]);
-
     const { addToast } = useAppContext();
-    // FIX: Get global marks state and setter from DataContext
-    const { schools, students: MOCK_ADMIN_STUDENTS, subjects: MOCK_SUBJECTS, assignments: MOCK_STUDENT_SUBJECT_ASSIGNMENTS, marks: allMarks, updateStudentMarks, extraCreditAssignments, setAssignments, setExtraCreditAssignments, updateStudentGrades, academicYears, appSettings } = useData();
+    const { schools, students, subjects, assignments, extraCreditAssignments, marks, updateStudentMarks, deleteStudentMarks, loadAssignmentsForStudents, loadMarksForStudents, academicYears, appSettings, loadSubjects } = useData();
 
+    // State Declarations
     const [selectedSchoolId, setSelectedSchoolId] = useState<string>(school ? school.id.toString() : '');
     const [selectedYear, setSelectedYear] = useState(appSettings.academicYear || '2082');
     const [selectedClass, setSelectedClass] = useState('11');
     const [isLoading, setIsLoading] = useState(false);
-    const [isDataLoaded, setIsDataLoaded] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    
-    // Effect to update selectedSchoolId when school prop changes
-    useEffect(() => {
-        if (school) {
-            setSelectedSchoolId(school.id.toString());
-        }
-    }, [school]);
-    
-    // Effect to update selectedYear when appSettings change
-    useEffect(() => {
-        if (appSettings.academicYear) {
-            setSelectedYear(appSettings.academicYear);
-        }
-    }, [appSettings.academicYear]);
-    
-    // Auto-load data when school is provided (for school users)
-    useEffect(() => {
-        if (school && selectedSchoolId && !isDataLoaded) {
-            // Small delay to ensure all state updates are processed
-            const timer = setTimeout(() => {
-                handleLoad();
-            }, 100);
-            
-            return () => clearTimeout(timer);
-        }
-    }, [school, selectedSchoolId, isDataLoaded]);
-    
-    const [students, setStudents] = useState<Student[]>([]);
     const [headerSubjects, setHeaderSubjects] = useState<Subject[]>([]);
-    const [marks, setMarks] = useState<MarksState>({});
-    
     const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
+    const [displayedStudents, setDisplayedStudents] = useState<Student[]>([]);
+    const [unsavedMarks, setUnsavedMarks] = useState<MarksMap>({}); // New state for unsaved marks
 
+    // Memoized Values
     const selectedSchool = useMemo(() => schools.find(s => s.id.toString() === selectedSchoolId), [selectedSchoolId, schools]);
-
-    const handleLoad = () => {
-        if (!selectedSchoolId && !school) {
-            addToast("Please select a school first.", "warning");
-            return;
-        }
-        if (isDataLoaded) return; // Prevent reloading if data is already loaded
-        
-        setIsLoading(true);
-        setIsDataLoaded(false);
-        setTimeout(() => {
-            const schoolId = parseInt(selectedSchoolId, 10);
-            const filteredStudents = MOCK_ADMIN_STUDENTS.filter(s => 
-                s.school_id === schoolId &&
-                s.year.toString() === selectedYear &&
-                s.grade === selectedClass
-                // Removed the assignment check since we'll load assignments for all students
-            );
-            setStudents(filteredStudents);
-
-            // Load assignments for all filtered students
-            const loadAssignments = async () => {
-                try {
-                    const assignmentsData: any = {};
-                    const extraCreditData: any = {};
-                    const marksData: any = {};
-                    
-                    for (const student of filteredStudents) {
-                        if (!assignmentsData[student.id]) {
-                            // Load assignments if not already loaded
-                            const assignmentData = await dataService.subjectAssignments.getAssignments(student.id, selectedYear);
-                            assignmentsData[student.id] = assignmentData.subjectIds;
-                            extraCreditData[student.id] = assignmentData.extraCreditSubjectId;
-                            
-                            // Update context with loaded assignments
-                            setAssignments(prev => ({ ...prev, [student.id]: assignmentData.subjectIds }));
-                            setExtraCreditAssignments(prev => ({ ...prev, [student.id]: assignmentData.extraCreditSubjectId }));
-                            
-                            // Load marks for this student
-                            try {
-                                const studentMarks = await dataService.marks.getMarks(student.id, selectedYear);
-                                marksData[student.id] = studentMarks;
-                            } catch (error) {
-                                console.warn(`No marks found for student ${student.id}`, error);
-                                marksData[student.id] = {};
-                            }
-                        }
-                    }
-                    
-                    // Now filter students who actually have assignments
-                    const studentsWithAssignments = filteredStudents.filter(student => 
-                        assignmentsData[student.id] && assignmentsData[student.id].length > 0
-                    );
-                    setStudents(studentsWithAssignments);
-                    
-                    const subjectIds = new Set<number>();
-                    studentsWithAssignments.forEach(student => {
-                        assignmentsData[student.id]?.forEach((id: number) => subjectIds.add(id));
-                    });
-                    const uniqueSubjects = MOCK_SUBJECTS.filter(s => subjectIds.has(s.id));
-                    setHeaderSubjects(uniqueSubjects);
-                    
-                    const initialMarks: MarksState = {};
-                    studentsWithAssignments.forEach(student => {
-                         // Initialize from loaded marks data if available, otherwise create new.
-                        initialMarks[student.id] = { isAbsent: marksData[student.id]?.isAbsent || false };
-                        
-                        // Process loaded marks for each subject
-                        Object.keys(marksData[student.id] || {}).forEach(key => {
-                            if (key !== 'isAbsent') {
-                                const subjectId = parseInt(key);
-                                const markData = marksData[student.id][key];
-                                if (typeof markData === 'object' && markData !== null) {
-                                    initialMarks[student.id][subjectId] = {
-                                        internal: markData.practical || 0,
-                                        theory: markData.theory || 0,
-                                    };
-                                }
-                            }
-                        });
-                        
-                         // Also initialize marks for extra credit subject
-                         const extraId = extraCreditData[student.id];
-                         if (extraId) {
-                             const existingExtraMarkData = marksData[student.id]?.[extraId];
-                             const existingExtraMark = typeof existingExtraMarkData === 'object' ? existingExtraMarkData : null;
-                             if (existingExtraMark) {
-                                initialMarks[student.id][extraId] = {
-                                    internal: existingExtraMark.practical || 0,
-                                    theory: existingExtraMark.theory || 0,
-                                };
-                            } else {
-                                initialMarks[student.id][extraId] = {
-                                    internal: 0,
-                                    theory: 0,
-                                };
-                            }
-                         }
-                    });
-                    setMarks(initialMarks);
-                    setSelectedStudents(new Set(studentsWithAssignments.map(s => s.id)));
-                    
-                    setIsLoading(false);
-                    setIsDataLoaded(true);
-                    addToast(`Loaded ${studentsWithAssignments.length} students with subject assignments for Grade ${selectedClass}.`, 'info');
-                } catch (error: any) {
-                    console.error('Error loading student assignments:', error);
-                    const errorMessage = error.response?.data?.error || error.message || 'Failed to load student assignments. Please try again.';
-                    addToast(`Error loading assignments: ${errorMessage}`, 'error');
-                    setIsLoading(false);
-                }
-            };
-            
-            loadAssignments();
-        }, 1000);
-    };
-
-    const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setSelectedStudents(e.target.checked ? new Set(students.map(s => s.id)) : new Set());
-    };
     
-    const handleSelectStudent = (studentId: string, isChecked: boolean) => {
-        setSelectedStudents(prev => {
-            const newSet = new Set(prev);
-            isChecked ? newSet.add(studentId) : newSet.delete(studentId);
-            return newSet;
-        });
-    };
-    
-    const handleMarkChange = (studentId: string, subjectId: number, field: keyof Marks, value: string) => {
-        if (isReadOnly) return;
-        
-        const numValue = parseInt(value) || 0;
-        setMarks(prev => {
-            const studentMarks = prev[studentId];
-            const currentSubjectMarkData = studentMarks?.[subjectId];
-            const currentSubjectMark = (typeof currentSubjectMarkData === 'object' && currentSubjectMarkData !== null) ? currentSubjectMarkData : { internal: 0, theory: 0 };
-            
-            return ({
-                ...prev,
-                [studentId]: {
-                    ...studentMarks,
-                    isAbsent: studentMarks.isAbsent,
-                    [subjectId]: {
-                        ...currentSubjectMark,
-                        [field]: numValue
-                    }
-                }
-            })
-        });
-        
-        // Update grades in real-time as marks change
-        updateGradesInRealTime(studentId);
-    };
-
-    const handleAbsenceChange = (studentId: string, isAbsent: boolean) => {
-        if (isReadOnly) return;
-        
-        setMarks(prev => ({
-            ...prev,
-            [studentId]: {
-                ...prev[studentId],
-                isAbsent: isAbsent,
-            }
-        }));
-        
-        // Update grades in real-time as absence status changes
-        updateGradesInRealTime(studentId);
-    };
-    
-    const updateGradesInRealTime = useCallback((studentId: string) => {
-        // Create a temporary marks object with just the changed student's marks
-        const updatedMarks = { [studentId]: marks[studentId] };
-        
-        // Calculate new grades for this student
-        const newGrades = calculateGradesForStudents(
-            [studentId],
-            { ...allMarks, ...updatedMarks }, // Merge existing marks with updated marks
-            MOCK_SUBJECTS,
-            MOCK_STUDENT_SUBJECT_ASSIGNMENTS
-        );
-        
-        // Update grades in the DataContext
-        updateStudentGrades(newGrades);
-    }, [marks, allMarks, MOCK_SUBJECTS, MOCK_STUDENT_SUBJECT_ASSIGNMENTS, updateStudentGrades]);
-    
-    const handleSaveMarks = async () => {
-        if (isReadOnly || isSubmitting) return;
-        
-        setIsSubmitting(true);
-        try {
-            updateStudentMarks(marks);
-            addToast("Marks submitted successfully!", "success");
-        } catch (error) {
-            addToast("Failed to submit marks. Please try again.", "error");
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-    
-    const handleDeleteMarks = async () => {
-        if (isReadOnly) return;
-        if (!selectedSchoolId) return;
-        
-        if (window.confirm("Are you sure you want to delete all marks for the selected students? This action cannot be undone.")) {
-            try {
-                // Delete marks for all selected students
-                for (const studentId of selectedStudents) {
-                    const student = students.find(s => s.id === studentId);
-                    if (student) {
-                        await dataService.marks.deleteMarks(studentId, selectedYear);
-                    }
-                }
-                
-                // Clear marks from local state
-                const clearedMarks = { ...marks };
-                selectedStudents.forEach(studentId => {
-                    if (clearedMarks[studentId]) {
-                        Object.keys(clearedMarks[studentId]).forEach(key => {
-                            if (key !== 'isAbsent') {
-                                const subjectId = parseInt(key);
-                                clearedMarks[studentId][subjectId] = { internal: 0, theory: 0 };
-                            }
-                        });
-                        clearedMarks[studentId].isAbsent = false;
-                    }
-                });
-                
-                setMarks(clearedMarks);
-                addToast("Marks deleted successfully!", "success");
-            } catch (error: any) {
-                console.error('Error deleting marks:', error);
-                const errorMessage = error.response?.data?.error || error.message || 'Failed to delete marks. Please try again.';
-                addToast(`Error deleting marks: ${errorMessage}`, "error");
-            }
-        }
-    };
-
     const studentResults = useMemo(() => {
-        return students.map(student => {
-            const studentMarks = marks[student.id];
+        return displayedStudents.map(student => {
+            // Use unsaved marks first, then fall back to context marks
+            const studentMarks = unsavedMarks[student.id] || marks[student.id];
             if (!studentMarks) return { student, totalObtained: 0, gpa: 0 };
             
-            const assignedSubjectIds = MOCK_STUDENT_SUBJECT_ASSIGNMENTS[student.id] || [];
+            const assignedSubjectIds = assignments[student.id] || [];
             let totalObtained = 0;
             let totalWGP = 0;
             let totalCreditHours = 0;
 
             assignedSubjectIds.forEach(subjectId => {
-                const subject = MOCK_SUBJECTS.find(s => s.id === subjectId);
-                const mark = studentMarks[subjectId] as Marks;
+                const subject = subjects.find(s => s.id === subjectId);
+                const mark = studentMarks[subjectId] as { internal: number; theory: number; };
                  if (subject && mark) {
                     totalObtained += (mark.theory || 0) + (mark.internal || 0);
 
@@ -349,16 +69,216 @@ const MarksEntryAdminPage: React.FC<{ school?: School; isReadOnly?: boolean }> =
             
             return { student, totalObtained, gpa };
         });
-    }, [students, marks, MOCK_SUBJECTS, MOCK_STUDENT_SUBJECT_ASSIGNMENTS]);
+    }, [displayedStudents, marks, unsavedMarks, subjects, assignments]);
 
-    const isAllSelected = selectedStudents.size > 0 && selectedStudents.size === students.length;
+    const isAllSelected = useMemo(() => selectedStudents.size > 0 && selectedStudents.size === displayedStudents.length, [selectedStudents, displayedStudents]);
+
+
+    // Callbacks
+    const handleLoad = useCallback(async () => {
+        if (!selectedSchoolId) {
+            addToast("Please select a school first.", "warning");
+            return;
+        }
+
+        setIsLoading(true);
+
+        try {
+            await loadSubjects(); // Call to refresh subjects
+            const schoolIdNum = parseInt(selectedSchoolId, 10);
+            const academicYearStr = selectedYear.toString();
+
+            const filteredStudents = students.filter(s =>
+                s.school_id === schoolIdNum &&
+                s.year.toString() === academicYearStr &&
+                s.grade === selectedClass
+            );
+
+            // Ensure student IDs are unique to prevent React key warnings
+            const uniqueFilteredStudents = filteredStudents.filter((student, index, self) => 
+                index === self.findIndex(s => s.id === student.id)
+            );
+
+            if (uniqueFilteredStudents.length === 0) {
+                addToast("No students found for the selected criteria.", "info");
+                setDisplayedStudents([]);
+                setHeaderSubjects([]);
+                setSelectedStudents(new Set());
+                setIsLoading(false);
+                return;
+            }
+
+            const studentIdsToLoad = uniqueFilteredStudents.map(s => s.id);
+
+            await loadAssignmentsForStudents(studentIdsToLoad, academicYearStr);
+            await loadMarksForStudents(studentIdsToLoad, academicYearStr);
+
+            const assignedSubjectIds = new Set<number>();
+            filteredStudents.forEach(student => {
+                const studentAssignments = assignments[student.id] || [];
+                studentAssignments.forEach(id => assignedSubjectIds.add(id));
+            });
+            const uniqueSubjects = subjects.filter(s => assignedSubjectIds.has(s.id));
+            setHeaderSubjects(uniqueSubjects.sort((a, b) => a.name.localeCompare(b.name)));
+
+            setDisplayedStudents(uniqueFilteredStudents);
+            setSelectedStudents(new Set(uniqueFilteredStudents.map(s => s.id)));
+
+            addToast(`Loaded ${uniqueFilteredStudents.length} students with subject assignments for Grade ${selectedClass}.`, 'info');
+        } catch (error: any) {
+            console.error('Error loading data:', error);
+            const errorMessage = error.response?.data?.error || error.message || 'Failed to load data. Please try again.';
+            addToast(`Error: ${errorMessage}`, 'error');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [selectedSchoolId, selectedYear, selectedClass, students, assignments, subjects, addToast, loadAssignmentsForStudents, loadMarksForStudents]);
+
+    // Modified handleMarkChange to only update local state
+    const handleMarkChange = useCallback((studentId: string, subjectId: number, field: 'internal' | 'theory', value: string) => {
+        if (isReadOnly) return;
+        
+        const numValue = parseInt(value) || 0;
+        
+        // Get current marks from unsavedMarks first, then from marks context
+        const currentStudentMarks = unsavedMarks[studentId] || marks[studentId] || {};
+        const currentSubjectMarkData = currentStudentMarks[subjectId];
+        const currentSubjectMark = (typeof currentSubjectMarkData === 'object' && currentSubjectMarkData !== null) ? currentSubjectMarkData : { internal: 0, theory: 0 };
+        
+        const updatedStudentMarks = {
+            ...currentStudentMarks,
+            [subjectId]: {
+                ...currentSubjectMark,
+                [field]: numValue
+            }
+        };
+
+        // Update unsaved marks state
+        setUnsavedMarks(prev => ({
+            ...prev,
+            [studentId]: updatedStudentMarks
+        }));
+        
+        // Removed toast notification during data entry - only show on Save Marks
+    }, [isReadOnly, marks, unsavedMarks]);
+
+    // Modified handleAbsenceChange to only update local state
+    const handleAbsenceChange = useCallback((studentId: string, isAbsent: boolean) => {
+        if (isReadOnly) return;
+        
+        // Get current marks from unsavedMarks first, then from marks context
+        const currentStudentMarks = unsavedMarks[studentId] || marks[studentId] || {};
+        const updatedStudentMarks = {
+            ...currentStudentMarks,
+            isAbsent: isAbsent,
+        };
+
+        // Update unsaved marks state
+        setUnsavedMarks(prev => ({
+            ...prev,
+            [studentId]: updatedStudentMarks
+        }));
+        
+        // Removed toast notification during data entry - only show on Save Marks
+    }, [isReadOnly, marks, unsavedMarks]);
+
+    // Regular Functions (not wrapped in useCallback)
+    const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setSelectedStudents(e.target.checked ? new Set(displayedStudents.map(s => s.id)) : new Set());
+    };
+    
+    const handleSelectStudent = (studentId: string, isChecked: boolean) => {
+        setSelectedStudents(prev => {
+            const newSet = new Set(prev);
+            isChecked ? newSet.add(studentId) : newSet.delete(studentId);
+            return newSet;
+        });
+    };
+    
+    // Modified handleSaveMarks to save all unsaved marks
+    const handleSaveMarks = async () => {
+        if (isReadOnly || isSubmitting) return;
+        
+        setIsSubmitting(true);
+        try {
+            // Only save if there are unsaved marks
+            if (Object.keys(unsavedMarks).length > 0) {
+                await updateStudentMarks(unsavedMarks);
+                addToast("Marks saved successfully!", "success");
+                // Clear unsaved marks after successful save
+                setUnsavedMarks({});
+            } else {
+                addToast("No changes to save.", "info");
+            }
+        } catch (error) {
+            console.error('Error saving marks:', error);
+            addToast("Failed to save marks. Please try again.", "error");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+    
+    const handleDeleteMarks = async () => {
+        if (isReadOnly) return;
+        if (!selectedSchoolId) {
+            addToast("Please select a school first.", "warning");
+            return;
+        }
+        
+        if (window.confirm("Are you sure you want to delete all marks for the selected students? This action cannot be undone.")) {
+            try {
+                for (const studentId of selectedStudents) {
+                    await deleteStudentMarks(studentId, selectedYear);
+                    // Clear unsaved marks for deleted students
+                    setUnsavedMarks(prev => {
+                        const newUnsavedMarks = { ...prev };
+                        delete newUnsavedMarks[studentId];
+                        return newUnsavedMarks;
+                    });
+                }
+                addToast("Marks deleted successfully!", "success");
+            } catch (error: any) {
+                console.error('Error deleting marks:', error);
+                const errorMessage = error.response?.data?.error || error.message || 'Failed to delete marks. Please try again.';
+                addToast(`Error deleting marks: ${errorMessage}`, "error");
+            }
+        }
+    };
+
+    // Function to clear unsaved changes
+    const handleClearUnsavedChanges = () => {
+        setUnsavedMarks({});
+        addToast("Unsaved changes cleared.", "info");
+    };
+
+    // Effects
+    useEffect(() => {
+        setPageTitle('Marks Entry');
+    }, [setPageTitle]);
+
+    useEffect(() => {
+        if (school) {
+            setSelectedSchoolId(school.id.toString());
+        }
+    }, [school]);
+    
+    useEffect(() => {
+        if (appSettings.academicYear) {
+            setSelectedYear(appSettings.academicYear);
+        }
+    }, [appSettings.academicYear]);
+
+    useEffect(() => {
+        if (school && selectedSchoolId && selectedYear && selectedClass && !isLoading) {
+            handleLoad();
+        }
+    }, [school, selectedSchoolId, selectedYear, selectedClass, isLoading, handleLoad]);
 
     return (
         <div className="animate-fade-in space-y-6">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                     {school ? (
-                        // If school prop is provided, show school info instead of dropdown
                         <div className="md:col-span-2">
                             <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Selected School*</label>
                             <div className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md">
@@ -366,14 +286,12 @@ const MarksEntryAdminPage: React.FC<{ school?: School; isReadOnly?: boolean }> =
                             </div>
                         </div>
                     ) : (
-                        // If no school prop, show the dropdown
                         <Select
                             id="school-selector"
                             label="Selected School*"
                             value={selectedSchoolId}
                             onChange={(e) => {
                                 setSelectedSchoolId(e.target.value);
-                                setIsDataLoaded(false);
                             }}
                             containerClassName="md:col-span-2"
                         >
@@ -385,20 +303,18 @@ const MarksEntryAdminPage: React.FC<{ school?: School; isReadOnly?: boolean }> =
                             ))}
                         </Select>
                     )}
-                    <Select id="year-selector" label="Year*" value={selectedYear} onChange={(e) => {setSelectedYear(e.target.value); setIsDataLoaded(false);}}>
+                    <Select id="year-selector" label="Year*" value={selectedYear} onChange={(e) => {setSelectedYear(e.target.value);}}>
                         {academicYears.filter(y => y.is_active).map(year => (
                             <option key={year.id} value={year.year}>{year.year}</option>
                         ))}
                     </Select>
-                    <Select id="class-selector" label="Class*" value={selectedClass} onChange={(e) => {setSelectedClass(e.target.value); setIsDataLoaded(false);}}>
+                    <Select id="class-selector" label="Class*" value={selectedClass} onChange={(e) => {setSelectedClass(e.target.value);}}>
                         <option value="11">Grade 11</option>
                         <option value="12">Grade 12</option>
                     </Select>
-                     <Button onClick={handleLoad} disabled={isLoading || isDataLoaded || !selectedSchoolId}>
+                     <Button onClick={handleLoad} disabled={isLoading || !selectedSchoolId}>
                         {isLoading ? (
                             <span className="flex items-center"><Loader /> Loading...</span>
-                        ) : isDataLoaded ? (
-                            'Loaded'
                         ) : (
                             'Load'
                         )}
@@ -406,7 +322,7 @@ const MarksEntryAdminPage: React.FC<{ school?: School; isReadOnly?: boolean }> =
                 </div>
             </div>
 
-            {isDataLoaded && (
+            {displayedStudents.length > 0 && !isLoading && (
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg animate-fade-in">
                     <div className="overflow-x-auto p-2">
                         <table className="w-full text-xs text-left border-collapse">
@@ -418,8 +334,8 @@ const MarksEntryAdminPage: React.FC<{ school?: School; isReadOnly?: boolean }> =
                                     <th className="p-2 min-w-[120px]">Regd. No.</th>
                                     <th className="p-2 min-w-[120px]">Symbol No.</th>
                                     <th className="p-2 text-center">IsAbsent</th>
-                                    {headerSubjects.map(subject => (
-                                        <React.Fragment key={subject.id}>
+                                    {headerSubjects.map((subject, index) => (
+                                        <React.Fragment key={`header-${subject.id}-${index}`}>
                                             <th className="p-2 text-center min-w-[100px]">{subject.name} (TH)</th>
                                             <th className="p-2 text-center min-w-[100px]">{subject.name} (IN)</th>
                                         </React.Fragment>
@@ -432,15 +348,16 @@ const MarksEntryAdminPage: React.FC<{ school?: School; isReadOnly?: boolean }> =
                             </thead>
                             <tbody>
                                 {studentResults.map(({ student, totalObtained, gpa }, index) => {
-                                    const studentMarks = marks[student.id];
+                                    const currentStudentId = student.id; // Capture student.id here
+                                    const studentMarks = unsavedMarks[student.id] || marks[student.id];
                                     if (!studentMarks) return null;
-                                    const assignedSubjectIds = new Set(MOCK_STUDENT_SUBJECT_ASSIGNMENTS[student.id] || []);
+                                    const assignedSubjectIds = new Set(assignments[student.id] || []);
                                     const extraCreditSubjectId = extraCreditAssignments[student.id];
-                                    const extraCreditSubject = extraCreditSubjectId ? MOCK_SUBJECTS.find(s => s.id === extraCreditSubjectId) : null;
+                                    const extraCreditSubject = extraCreditSubjectId ? subjects.find(s => s.id === extraCreditSubjectId) : null;
                                     const extraMark = extraCreditSubjectId ? (studentMarks[extraCreditSubjectId] as Marks) : null;
 
                                     return (
-                                    <tr key={student.id} className={`border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600/50 ${studentMarks.isAbsent ? 'opacity-60 bg-gray-100 dark:bg-gray-700/50' : ''}`}>
+                                    <tr key={`student-${student.id}`} className={`border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600/50 ${studentMarks.isAbsent ? 'opacity-60 bg-gray-100 dark:bg-gray-700/50' : ''}`}>
                                         <td className="p-2 text-center sticky left-0 z-10 bg-white dark:bg-gray-800"><input type="checkbox" checked={selectedStudents.has(student.id)} onChange={(e) => !isReadOnly && handleSelectStudent(student.id, e.target.checked)} disabled={isReadOnly} className="rounded"/></td>
                                         <td className="p-2 sticky left-10 z-10 bg-white dark:bg-gray-800">{index + 1}</td>
                                         <td className="p-2 font-medium sticky left-24 z-10 bg-white dark:bg-gray-800">{student.name}</td>
@@ -454,7 +371,7 @@ const MarksEntryAdminPage: React.FC<{ school?: School; isReadOnly?: boolean }> =
                                             const isAssigned = assignedSubjectIds.has(subject.id);
                                             const mark = studentMarks[subject.id] as Marks;
                                             return (
-                                                <React.Fragment key={subject.id}>
+                                                <React.Fragment key={`cell-${currentStudentId}-${subject.id}`}>
                                                     <td className={`p-1 ${!isAssigned && 'bg-gray-50 dark:bg-gray-700/50'}`}><input type="number" disabled={isReadOnly || !!studentMarks.isAbsent || !isAssigned} value={isAssigned ? mark?.theory ?? '' : ''} onChange={(e) => !isReadOnly && handleMarkChange(student.id, subject.id, 'theory', e.target.value)} className="w-full text-center bg-white dark:bg-gray-700 border rounded p-1 disabled:bg-gray-100 dark:disabled:bg-gray-600"/></td>
                                                     <td className={`p-1 ${!isAssigned && 'bg-gray-50 dark:bg-gray-700/50'}`}><input type="number" disabled={isReadOnly || !!studentMarks.isAbsent || !isAssigned} value={isAssigned ? mark?.internal ?? '' : ''} onChange={(e) => !isReadOnly && handleMarkChange(student.id, subject.id, 'internal', e.target.value)} className="w-full text-center bg-white dark:bg-gray-700 border rounded p-1 disabled:bg-gray-100 dark:disabled:bg-gray-600"/></td>
                                                 </React.Fragment>
@@ -489,8 +406,13 @@ const MarksEntryAdminPage: React.FC<{ school?: School; isReadOnly?: boolean }> =
                     </div>
                      <div className="p-4 flex justify-end space-x-2 border-t dark:border-gray-700">
                         <Button variant="secondary" disabled={isReadOnly}>Save as Draft</Button>
+                        {Object.keys(unsavedMarks).length > 0 && (
+                            <Button variant="secondary" onClick={handleClearUnsavedChanges}>
+                                Clear Changes
+                            </Button>
+                        )}
                         <Button onClick={handleSaveMarks} disabled={isReadOnly || isSubmitting}>
-                            {isSubmitting ? 'Submitting...' : 'Submit Marks'}
+                            {isSubmitting ? 'Saving...' : 'Save Marks'}
                         </Button>
                         {selectedStudents.size > 0 && (
                             <Button variant="danger" onClick={handleDeleteMarks} disabled={isReadOnly}>

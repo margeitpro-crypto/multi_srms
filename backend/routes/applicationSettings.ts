@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { getSetting, setSetting, getSettings, getAllSettings } from '../services/applicationSettingsService';
+import { getSetting, setSetting, getAllSettings } from '../services/applicationSettingsService';
+import { requireAdmin } from '../middleware/authMiddleware';
 
 const router = Router();
 
@@ -32,7 +33,7 @@ router.get('/:key', async (req: Request, res: Response) => {
 });
 
 // POST /api/application-settings - Set application settings
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { settings } = req.body;
     
@@ -42,7 +43,7 @@ router.post('/', async (req: Request, res: Response) => {
     
     // Save all settings
     const savePromises = Object.entries(settings).map(([key, value]) => 
-      setSetting(key, value)
+      setSetting(key, value as any)
     );
     
     await Promise.all(savePromises);
@@ -55,7 +56,7 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // PUT /api/application-settings/:key - Set a specific application setting
-router.put('/:key', async (req: Request, res: Response) => {
+router.put('/:key', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { key } = req.params;
     const { value, description } = req.body;

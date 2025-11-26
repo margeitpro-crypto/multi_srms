@@ -16,7 +16,7 @@ const MarksEntrySchoolPage: React.FC = () => {
     // Check if the page should be read-only
     const isReadOnly = schoolPageVisibility?.marksEntry === 'read-only' || schoolPageVisibility?.marksEntry === 'hidden';
 
-    return <MarksEntryAdminPage school={loggedInSchool!} isReadOnly={isReadOnly} />;
+    return <MarksEntryAdminPage school={loggedInSchool} isReadOnly={isReadOnly} />;
 };
 
 export default MarksEntrySchoolPage;

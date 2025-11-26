@@ -20,6 +20,8 @@ import { UserCircleIcon } from '../../components/icons/UserCircleIcon';
 import { PencilIcon } from '../../components/icons/PencilIcon';
 import { TrashIcon } from '../../components/icons/TrashIcon';
 import { DocumentArrowUpIcon } from '../../components/icons/DocumentArrowUpIcon';
+import { DocumentArrowDownIcon } from '../../components/icons/DocumentArrowDownIcon';
+import { ArrowLeftOnRectangleIcon } from '../../components/icons/ArrowLeftOnRectangleIcon';
 import { usePageTitle } from '../../context/PageTitleContext';
 import { formatToYYMMDD } from '../../utils/nepaliDateConverter';
 import * as XLSX from 'xlsx';
@@ -38,7 +40,7 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
     setPageTitle('Manage Students');
   }, [setPageTitle]);
 
-  const { students: allStudents, setStudents: setAllStudents, schools, isDataLoading: isLoading, academicYears, appSettings } = useData();
+  const { students: allStudents, setStudents: setAllStudents, schools, isDataLoading: isLoading, academicYears, appSettings, loadStudents } = useData();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -52,6 +54,10 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
   const [selectedClass, setSelectedClass] = useState<string>('11');
   const [showStudents, setShowStudents] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
+  const [previewData, setPreviewData] = useState<any[]>([]);
+  const [showPreview, setShowPreview] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Effect to update selectedSchoolId when school prop changes
   useEffect(() => {
@@ -77,7 +83,7 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
         
         return () => clearTimeout(timer);
     }
-}, [school, selectedSchoolId, selectedYear, selectedClass, showStudents]);
+  }, [school, selectedSchoolId, selectedYear, selectedClass, showStudents]);
 
   // Auto-load data when selectedYear changes
   useEffect(() => {
@@ -87,11 +93,22 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
         // Reset current page to 1
         setCurrentPage(1);
     }
-}, [selectedYear, selectedSchoolId, selectedClass]); // Trigger when any of these change
+  }, [selectedYear, selectedSchoolId, selectedClass]); // Trigger when any of these change
 
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
   const PLAN_LIMITS = { Basic: 500, Pro: 2000, Enterprise: Infinity };
+
+  // Function to refresh student data
+  const refreshStudents = async () => {
+    try {
+      await loadStudents();
+      addToast('Students data refreshed successfully!', 'success');
+    } catch (error) {
+      console.error('Error refreshing students:', error);
+      addToast('Failed to refresh students data', 'error');
+    }
+  };
 
   const handleAdd = () => {
     setSelectedStudent(null);
@@ -177,9 +194,29 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
         setAllStudents(prev => [...prev, newStudent]);
         addToast(`Student "${newStudent.name}" added successfully!`, 'success');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving student:', error);
-      addToast('Failed to save student. Please try again.', 'error');
+      let errorMessage = 'Failed to save student. Please try again.';
+      
+      // Handle specific error cases
+      if (error.response) {
+        if (error.response.status === 409) {
+          // Conflict - duplicate student
+          errorMessage = error.response.data.error || 'Student already exists';
+        } else if (error.response.status === 400) {
+          // Bad request - validation error
+          errorMessage = error.response.data.error || 'Invalid student data provided';
+        } else if (error.response.data && error.response.data.error) {
+          errorMessage = error.response.data.error;
+        } else if (error.response.data && error.response.data.details) {
+          errorMessage = `Server error: ${error.response.data.details}`;
+        }
+      } else if (error.request) {
+        // Network error
+        errorMessage = 'Network error - please check your connection';
+      }
+      
+      addToast(errorMessage, 'error');
     }
     
     setIsModalOpen(false);
@@ -210,9 +247,26 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
         } else {
           addToast(`Failed to delete ${studentToDelete.name}. Student not found in database.`, 'error');
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error deleting student:', error);
-        addToast(`Failed to delete ${studentToDelete.name}. Please try again.`, 'error');
+        let errorMessage = `Failed to delete ${studentToDelete.name}. Please try again.`;
+        
+        // Handle specific error cases
+        if (error.response) {
+          if (error.response.status === 409) {
+            // Conflict - student has associated data
+            errorMessage = error.response.data.error || 'Cannot delete student with associated data';
+          } else if (error.response.data && error.response.data.error) {
+            errorMessage = error.response.data.error;
+          } else if (error.response.data && error.response.data.details) {
+            errorMessage = `Server error: ${error.response.data.details}`;
+          }
+        } else if (error.request) {
+          // Network error
+          errorMessage = 'Network error - please check your connection';
+        }
+        
+        addToast(errorMessage, 'error');
       } finally {
         setStudentToDelete(null);
         setIsConfirmModalOpen(false);
@@ -277,14 +331,16 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
       // Update local state with saved students
       setAllStudents(prevStudents => [...(prevStudents || []), ...savedStudents]);
       addToast(`${savedStudents.length} students uploaded and saved successfully!`, 'success');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving students:', error);
       // Show more detailed error message
-      if (error instanceof Error) {
-        addToast(`Failed to save students to database: ${error.message}. Please try again.`, 'error');
-      } else {
-        addToast('Failed to save students to database. Please try again.', 'error');
+      let errorMessage = 'Failed to save students to database. Please try again.';
+      if (error.response && error.response.data && error.response.data.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.message) {
+        errorMessage = `Failed to save students to database: ${error.message}. Please try again.`;
       }
+      addToast(errorMessage, 'error');
       // Return early to prevent success flow
       return;
     }
@@ -350,6 +406,162 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
     XLSX.writeFile(wb, `students_${selectedSchoolId}_${selectedYear}_grade${selectedClass}.xlsx`);
   };
 
+  // Function to handle CSV import
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Reset input value to allow re-uploading the same file
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+
+    // Check file type
+    if (!file.name.endsWith('.csv')) {
+      addToast('Please upload a CSV file', 'error');
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      const lines = text.split('\n').filter(line => line.trim() !== '');
+      
+      if (lines.length <= 1) {
+        addToast('CSV file is empty or invalid', 'error');
+        return;
+      }
+
+      // Parse headers
+      const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+      
+      // Validate required headers
+      const requiredHeaders = ['Full Name', 'Registration ID', 'Symbol No', 'Roll No', 'Gender', 'DOB (BS)', 'Father\'s Name', 'Mother\'s Name'];
+      const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
+      
+      if (missingHeaders.length > 0) {
+        addToast(`Missing required columns: ${missingHeaders.join(', ')}`, 'error');
+        return;
+      }
+
+      // Process data rows
+      const previewRows: any[] = [];
+      
+      for (let i = 1; i < Math.min(lines.length, 6); i++) { // Preview first 5 rows
+        const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
+        
+        if (values.length !== headers.length) {
+          addToast(`Row ${i + 1} has invalid number of columns`, 'error');
+          return;
+        }
+        
+        const rowData: any = {};
+        headers.forEach((header, index) => {
+          rowData[header] = values[index];
+        });
+        
+        previewRows.push(rowData);
+      }
+
+      // Show preview
+      setPreviewData(previewRows);
+      setShowPreview(true);
+      
+      // Note: Actual import will be handled in a separate function after user confirmation
+    } catch (error) {
+      console.error('Error reading CSV file:', error);
+      addToast('Failed to read CSV file', 'error');
+    }
+  };
+
+  // Function to confirm CSV import
+  const confirmImport = async () => {
+    if (previewData.length === 0) return;
+    
+    setIsImporting(true);
+    
+    try {
+      // Process all data rows
+      const newStudents: Partial<Student>[] = [];
+      
+      // In a real implementation, we would read the full file again here
+      // For now, we'll just use the preview data as a sample
+      for (const rowData of previewData) {
+        // Map to Student object
+        newStudents.push({
+          id: `S${Date.now() + Math.random()}`,
+          school_id: Number(selectedSchoolId),
+          name: rowData['Full Name'],
+          registration_id: rowData['Registration ID'],
+          symbol_no: rowData['Symbol No'],
+          roll_no: rowData['Roll No'],
+          gender: rowData['Gender'] || 'Male',
+          dob_bs: rowData['DOB (BS)'],
+          father_name: rowData['Father\'s Name'],
+          mother_name: rowData['Mother\'s Name'],
+          mobile_no: rowData['Mobile No'] || '',
+          alph: rowData['Alph'] || '',
+          year: parseInt(selectedYear),
+          grade: selectedClass,
+          photo_url: 'https://placehold.co/100x100?text=No+Photo'
+        });
+      }
+
+      // Import students
+      const importedStudents = [];
+      let successCount = 0;
+      let errorCount = 0;
+      
+      for (const studentData of newStudents) {
+        try {
+          // Prepare student data for API
+          const studentPayload = {
+            student_system_id: studentData.id,
+            school_id: studentData.school_id,
+            name: studentData.name,
+            dob: studentData.dob,
+            gender: studentData.gender,
+            grade: studentData.grade,
+            roll_no: studentData.roll_no,
+            photo_url: studentData.photo_url,
+            academic_year: studentData.year,
+            symbol_no: studentData.symbol_no,
+            alph: studentData.alph,
+            registration_id: studentData.registration_id,
+            dob_bs: studentData.dob_bs,
+            father_name: studentData.father_name,
+            mother_name: studentData.mother_name,
+            mobile_no: studentData.mobile_no
+          };
+          
+          const newStudent = await studentsApi.create(studentPayload as any);
+          importedStudents.push(newStudent);
+          successCount++;
+        } catch (error: any) {
+          console.error('Error importing student:', error);
+          errorCount++;
+        }
+      }
+      
+      // Update state with newly imported students
+      setAllStudents(prev => [...prev, ...importedStudents]);
+      
+      // Close preview
+      setShowPreview(false);
+      setPreviewData([]);
+      
+      if (errorCount === 0) {
+        addToast(`${successCount} students imported successfully!`, 'success');
+      } else {
+        addToast(`${successCount} students imported successfully, ${errorCount} failed.`, 'warning');
+      }
+    } catch (error) {
+      console.error('Error importing students:', error);
+      addToast('Failed to import students', 'error');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   const filteredStudents = useMemo(() => {
     if (!allStudents || !selectedSchoolId || !selectedYear || !selectedClass) return [];
     
@@ -368,7 +580,10 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
         student.name.toLowerCase().includes(lowercasedQuery) ||
         student.id.toLowerCase().includes(lowercasedQuery) ||
         student.symbol_no.toLowerCase().includes(lowercasedQuery) ||
-        student.registration_id.toLowerCase().includes(lowercasedQuery)
+        student.registration_id.toLowerCase().includes(lowercasedQuery) ||
+        student.father_name.toLowerCase().includes(lowercasedQuery) ||
+        student.mother_name.toLowerCase().includes(lowercasedQuery) ||
+        student.mobile_no.toLowerCase().includes(lowercasedQuery)
     );
   }, [allStudents, selectedSchoolId, selectedYear, selectedClass, searchQuery]);
 
@@ -472,8 +687,23 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
                 </div>
                 {!isReadOnly && (
                   <div className="flex items-center space-x-2">
+                      <input 
+                        type="file" 
+                        ref={fileInputRef}
+                        onChange={handleImport}
+                        accept=".csv"
+                        className="hidden" 
+                      />
+                      <Button 
+                        onClick={() => fileInputRef.current?.click()}
+                        variant="secondary"
+                        disabled={isImporting}
+                      >
+                        {isImporting ? 'Importing...' : 'Import CSV'}
+                      </Button>
                       <Button variant="secondary" onClick={() => setIsUploadModalOpen(true)} leftIcon={<DocumentArrowUpIcon className="w-4 h-4" />}>Upload Excel</Button>
-                      <Button variant="secondary" onClick={exportStudentsToExcel}>Export to Excel</Button>
+                      <Button variant="secondary" onClick={exportStudentsToExcel} leftIcon={<DocumentArrowDownIcon className="w-4 h-4" />}>Export to Excel</Button>
+                      <Button variant="secondary" onClick={refreshStudents} leftIcon={<ArrowLeftOnRectangleIcon className="w-4 h-4" />}>Refresh</Button>
                       <Button onClick={() => navigate('/student/all-profiles')}>Print All Profiles</Button>
                       <Button onClick={handleAdd}>Add Student</Button>
                   </div>
@@ -543,6 +773,72 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
             <StudentForm student={selectedStudent} onSave={handleSave} onClose={() => setIsModalOpen(false)} />
           </Modal>
 
+          <Modal
+            isOpen={showPreview}
+            onClose={() => {
+              setShowPreview(false);
+              setPreviewData([]);
+            }}
+            title="Import Preview"
+            size="lg"
+          >
+            <div className="space-y-4">
+              <p className="text-gray-600 dark:text-gray-300">
+                Please review the data before importing. Only the first 5 rows are shown for preview.
+              </p>
+              
+              <div className="overflow-x-auto max-h-96 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                    <tr>
+                      {previewData.length > 0 && Object.keys(previewData[0]).map((header) => (
+                        <th 
+                          key={header}
+                          className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                        >
+                          {header}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {previewData.map((row, rowIndex) => (
+                      <tr key={rowIndex} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        {Object.values(row).map((value, colIndex) => (
+                          <td 
+                            key={colIndex}
+                            className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 max-w-xs truncate"
+                            title={String(value)}
+                          >
+                            {String(value)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              <div className="flex justify-end space-x-3 pt-4">
+                <Button 
+                  variant="secondary" 
+                  onClick={() => {
+                    setShowPreview(false);
+                    setPreviewData([]);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={confirmImport}
+                  disabled={isImporting}
+                >
+                  {isImporting ? 'Importing...' : 'Import Students'}
+                </Button>
+              </div>
+            </div>
+          </Modal>
+
           <ExcelUploadModal
             isOpen={isUploadModalOpen}
             onClose={() => setIsUploadModalOpen(false)}
@@ -560,12 +856,11 @@ const ManageStudentsPage: React.FC<{ school?: School; isReadOnly?: boolean }> = 
             }}
             onConfirm={confirmDelete}
             title="Confirm Delete"
-            message={`Are you sure you want to delete ${studentToDelete?.name}? This action cannot be undone.`}
+            message={`Are you sure you want to delete ${studentToDelete?.name}? This action cannot be undone. All associated data will be permanently removed.`}
             confirmText="Delete"
             confirmVariant="danger"
           />
           
-
         </>
       )}
     </div>

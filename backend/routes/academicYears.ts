@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { academicYearsService } from '../services/academicYearsService';
+import { requireAdmin } from '../middleware/authMiddleware';
 
 const router = Router();
 
@@ -46,7 +47,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 });
 
 // POST /api/academic-years - Create a new academic year
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { year, is_active } = req.body;
     
@@ -70,7 +71,7 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // PUT /api/academic-years/:id - Update an academic year
-router.put('/:id', async (req: Request, res: Response) => {
+router.put('/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
@@ -104,7 +105,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 });
 
 // DELETE /api/academic-years/:id - Delete an academic year
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
@@ -125,7 +126,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
 });
 
 // PUT /api/academic-years/:id/toggle - Toggle active status
-router.put('/:id/toggle', async (req: Request, res: Response) => {
+router.put('/:id/toggle', requireAdmin, async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {

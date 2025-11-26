@@ -1,8 +1,8 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { School } from '../types';
-import { useData } from './DataContext';
 import { useAppContext } from './AppContext';
+import { getCurrentUser, loginUser, logoutUser, registerUser, User as AuthUser, AuthSession } from '../services/supabaseAuthService';
 
 type Role = 'admin' | 'school';
 
@@ -20,8 +20,11 @@ interface AuthContextType {
   userRole: Role | null;
   loggedInSchool: School | null;
   currentUser: User | null;
-  login: (role: Role, credentials?: { iemisCode?: string; password?: string; schoolId?: number }) => void;
-  logout: () => void;
+  setLoggedInSchool: (school: School | null) => void;
+  login: (identifier: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
+  register: (iemisCode: string, email: string, password: string, role: Role, schoolId?: number) => Promise<boolean>;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,84 +34,191 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [userRole, setUserRole] = useState<Role | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loggedInSchool, setLoggedInSchool] = useState<School | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
-  const { schools } = useData();
+  const location = useLocation();
   const { addToast } = useAppContext();
 
   // Check for existing user session on app load
   useEffect(() => {
-    const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
+    const checkUserSession = async () => {
       try {
-        const user: User = JSON.parse(storedUser);
-        setIsAuthenticated(true);
-        setUserRole(user.role);
-        setCurrentUser(user);
+        const { session, error } = await getCurrentUser();
         
-        // If it's a school user, find and set the school
-        if (user.role === 'school' && user.school_id) {
-          const school = schools.find(s => s.id === user.school_id);
-          if (school) {
-            setLoggedInSchool(school);
+        if (error) {
+          console.error('Error checking user session:', error);
+          setIsLoading(false);
+          return;
+        }
+        
+        if (session) {
+          setIsAuthenticated(true);
+          setUserRole(session.user.role || null);
+          
+          // Create user object compatible with existing code
+          const user: User = {
+            id: session.user.id,
+            iemis_code: session.user.iemis_code,
+            email: session.user.email,
+            role: session.user.role,
+            school_id: session.user.school_id
+          };
+          
+          setCurrentUser(user);
+          
+          // Store user data in localStorage for backward compatibility
+          if (typeof window !== 'undefined' && window.localStorage) {
+            localStorage.setItem('currentUser', JSON.stringify(user));
+            localStorage.setItem('authToken', session.token);
+          }
+        } else {
+          // For HashRouter, we need to check the hash portion of the URL
+          // The actual route is in location.hash, not location.pathname
+          const currentRoute = location.hash.replace('#', '') || '/';
+          
+          // No session found, redirect to login if not already on login/register page, homepage, or portfolio
+          const publicPaths = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/portfolio'];
+          if (!publicPaths.includes(currentRoute)) {
+            navigate('/login');
           }
         }
       } catch (error) {
-        console.error('Error parsing stored user:', error);
-        localStorage.removeItem('currentUser');
+        console.error('Error during session check:', error);
+      } finally {
+        setIsLoading(false);
       }
-    }
-  }, [schools]);
+    };
 
-  const login = (role: Role, credentials?: { iemisCode?: string; password?: string; schoolId?: number }) => {
-    // In a real app, you would validate the credentials with the backend
-    // For now, we're trusting the role from the backend response
-    setIsAuthenticated(true);
-    setUserRole(role);
-    
-    // Set current user if provided
-    if (credentials?.iemisCode) {
-      const user: User = {
-        id: 0, // Will be set by backend
-        iemis_code: credentials.iemisCode,
-        email: null,
-        role: role,
-        school_id: credentials.schoolId || null
-      };
-      setCurrentUser(user);
-    }
-    
-    if (role === 'admin') {
-      setLoggedInSchool(null);
-      navigate('/admin/dashboard');
-    } else if (role === 'school') {
-      // Find the school by ID if provided, otherwise use mock data
-      if (credentials?.schoolId) {
-        const school = schools.find(s => s.id === credentials.schoolId);
-        if (school) {
-          setLoggedInSchool(school);
-        }
+    checkUserSession();
+  }, [location.hash, navigate]);
+
+  const login = async (identifier: string, password: string): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      const { session, error } = await loginUser(identifier, password);
+      
+      if (error) {
+        addToast(error || 'Login failed', 'error');
+        return false;
       }
       
-      navigate('/school/dashboard');
+      if (session) {
+        setIsAuthenticated(true);
+        setUserRole(session.user.role || null);
+        
+        // Create user object compatible with existing code
+        const user: User = {
+          id: session.user.id,
+          iemis_code: session.user.iemis_code,
+          email: session.user.email,
+          role: session.user.role,
+          school_id: session.user.school_id
+        };
+        
+        setCurrentUser(user);
+        
+        // Store user data in localStorage for backward compatibility
+        if (typeof window !== 'undefined' && window.localStorage) {
+          localStorage.setItem('currentUser', JSON.stringify(user));
+          localStorage.setItem('authToken', session.token);
+        }
+        
+        addToast('Login successful!', 'success');
+        
+        // Navigate based on user role
+        if (session.user.role === 'admin') {
+          navigate('/admin/dashboard');
+        } else if (session.user.role === 'school') {
+          navigate('/school/dashboard');
+        }
+        
+        return true;
+      }
+      
+      return false;
+    } catch (error: any) {
+      console.error('Login error:', error);
+      addToast(error.message || 'Login failed. Please try again.', 'error');
+      return false;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    setIsAuthenticated(false);
-    setUserRole(null);
-    setCurrentUser(null);
-    setLoggedInSchool(null);
-    
-    // Remove user data from localStorage
-    if (typeof window !== 'undefined' && window.localStorage) {
-      localStorage.removeItem('currentUser');
+  const register = async (
+    iemisCode: string,
+    email: string,
+    password: string,
+    role: Role,
+    schoolId?: number
+  ): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      const { user, error } = await registerUser(iemisCode, email, password, role, schoolId);
+      
+      if (error) {
+        addToast(error || 'Registration failed', 'error');
+        return false;
+      }
+      
+      if (user) {
+        addToast('Registration successful! Please login.', 'success');
+        return true;
+      }
+      
+      return false;
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      const errorMessage = error.response?.data?.error || 'Registration failed. Please try again.';
+      addToast(errorMessage, 'error');
+      return false;
+    } finally {
+      setIsLoading(false);
     }
-    
-    navigate('/login');
+  };
+
+  const logout = async (): Promise<void> => {
+    setIsLoading(true);
+    try {
+      const { error } = await logoutUser();
+      
+      if (error) {
+        console.error('Logout error:', error);
+      }
+      
+      setIsAuthenticated(false);
+      setUserRole(null);
+      setCurrentUser(null);
+      setLoggedInSchool(null);
+      
+      // Remove user data from localStorage
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('authToken');
+      }
+      
+      addToast('You have been logged out successfully.', 'success');
+      navigate('/login');
+    } catch (error: any) {
+      console.error('Logout error:', error);
+      addToast(error.message || 'Logout failed. Please try again.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, userRole, loggedInSchool, currentUser, login, logout }}>
+    <AuthContext.Provider value={{ 
+      isAuthenticated, 
+      userRole, 
+      loggedInSchool, 
+      currentUser,
+      setLoggedInSchool,
+      login, 
+      logout, 
+      register,
+      isLoading 
+    }}>
       {children}
     </AuthContext.Provider>
   );

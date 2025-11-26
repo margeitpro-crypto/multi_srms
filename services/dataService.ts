@@ -210,6 +210,22 @@ export const usersApi = {
     }
   },
   
+  register: async (userData: { 
+    email: string; 
+    password: string; 
+    iemisCode: string; 
+    role: 'admin' | 'school'; 
+    schoolId?: number 
+  }): Promise<{ message: string; user: User }> => {
+    try {
+      const response = await api.post<{ message: string; user: User }>('/users/register', userData);
+      return response.data;
+    } catch (error) {
+      console.error('Error registering user:', error);
+      throw error;
+    }
+  },
+  
   update: async (id: number, user: Partial<User>): Promise<User> => {
     try {
       const response = await api.put<User>(`/users/${id}`, user);

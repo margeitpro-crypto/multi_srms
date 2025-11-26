@@ -1,11 +1,17 @@
-import { Router, Request, Response } from 'express';
-import { marksService, subjectAssignmentsService } from '../services/dbService';
+import { Router, Response } from 'express';
+import { marksService, studentsService } from '../services/dbService';
+import { AuthRequest } from '../middleware/authMiddleware';
 
 const router = Router();
 
 // GET /api/marks/:studentId/:year - Get marks for a student in a specific year
-router.get('/:studentId/:year', async (req: Request, res: Response) => {
+router.get('/:studentId/:year', async (req: AuthRequest, res: Response) => {
   try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
     const studentSystemId = req.params.studentId;
     const academicYear = parseInt(req.params.year);
     
@@ -13,13 +19,16 @@ router.get('/:studentId/:year', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid student ID or academic year' });
     }
     
-    // Get the database ID for the student
-    const studentId = await subjectAssignmentsService.getStudentDatabaseIdBySystemId(studentSystemId);
-    if (studentId === null) {
+    const student = await studentsService.getStudentBySystemId(studentSystemId);
+    if (!student) {
       return res.status(404).json({ error: 'Student not found' });
     }
+
+    if (user.role === 'school' && user.school_id !== student.school_id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
     
-    const marks = await marksService.getStudentMarks(studentId, academicYear);
+    const marks = await marksService.getStudentMarks(student.id, academicYear);
     
     res.json(marks);
   } catch (err) {
@@ -29,8 +38,13 @@ router.get('/:studentId/:year', async (req: Request, res: Response) => {
 });
 
 // POST /api/marks/:studentId/:year - Save marks for a student in a specific year
-router.post('/:studentId/:year', async (req: Request, res: Response) => {
+router.post('/:studentId/:year', async (req: AuthRequest, res: Response) => {
   try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
     const studentSystemId = req.params.studentId;
     const academicYear = parseInt(req.params.year);
     const marksData = req.body;
@@ -39,18 +53,20 @@ router.post('/:studentId/:year', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid student ID or academic year' });
     }
     
-    // Validate marks data
     if (typeof marksData !== 'object' || marksData === null) {
       return res.status(400).json({ error: 'Invalid marks data' });
     }
     
-    // Get the database ID for the student
-    const studentId = await subjectAssignmentsService.getStudentDatabaseIdBySystemId(studentSystemId);
-    if (studentId === null) {
+    const student = await studentsService.getStudentBySystemId(studentSystemId);
+    if (!student) {
       return res.status(404).json({ error: 'Student not found' });
     }
+
+    if (user.role === 'school' && user.school_id !== student.school_id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
     
-    const savedMarks = await marksService.saveStudentMarks(studentId, academicYear, marksData);
+    const savedMarks = await marksService.saveStudentMarks(student.id, academicYear, marksData);
     
     res.status(200).json({ 
       message: 'Marks saved successfully',
@@ -63,8 +79,13 @@ router.post('/:studentId/:year', async (req: Request, res: Response) => {
 });
 
 // DELETE /api/marks/:studentId/:year - Delete marks for a student in a specific year
-router.delete('/:studentId/:year', async (req: Request, res: Response) => {
+router.delete('/:studentId/:year', async (req: AuthRequest, res: Response) => {
   try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
     const studentSystemId = req.params.studentId;
     const academicYear = parseInt(req.params.year);
     
@@ -72,13 +93,16 @@ router.delete('/:studentId/:year', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid student ID or academic year' });
     }
     
-    // Get the database ID for the student
-    const studentId = await subjectAssignmentsService.getStudentDatabaseIdBySystemId(studentSystemId);
-    if (studentId === null) {
+    const student = await studentsService.getStudentBySystemId(studentSystemId);
+    if (!student) {
       return res.status(404).json({ error: 'Student not found' });
     }
+
+    if (user.role === 'school' && user.school_id !== student.school_id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
     
-    await marksService.deleteStudentMarks(studentId, academicYear);
+    await marksService.deleteStudentMarks(student.id, academicYear);
     
     res.status(200).json({ 
       message: 'Marks deleted successfully'

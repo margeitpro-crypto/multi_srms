@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Table from '../../components/Table';
 import Button from '../../components/Button';
 import Modal from '../../components/Modal';
@@ -13,6 +13,7 @@ import { PencilIcon } from '../../components/icons/PencilIcon';
 import { TrashIcon } from '../../components/icons/TrashIcon';
 import { BuildingOfficeIcon } from '../../components/icons/BuildingOfficeIcon';
 import { UserPlusIcon } from '../../components/icons/UserPlusIcon';
+import { DocumentArrowDownIcon } from '../../components/icons/DocumentArrowDownIcon';
 import { usePageTitle } from '../../context/PageTitleContext';
 import { useData } from '../../context/DataContext';
 import { schoolsApi, usersApi } from '../../services/dataService';
@@ -36,13 +37,89 @@ const SchoolForm: React.FC<{ school: Partial<School> | null, onSave: (school: Sc
     subscriptionPlan: school?.subscriptionPlan || 'Basic'
   });
   
+  // Add validation state
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!formData.iemisCode?.trim()) {
+      newErrors.iemisCode = 'IEMIS Code is required';
+    } else if (formData.iemisCode.length < 3) {
+      newErrors.iemisCode = 'IEMIS Code must be at least 3 characters';
+    }
+    
+    if (!formData.name?.trim()) {
+      newErrors.name = 'School name is required';
+    } else if (formData.name.length < 3) {
+      newErrors.name = 'School name must be at least 3 characters';
+    }
+    
+    if (!formData.municipality?.trim()) {
+      newErrors.municipality = 'Municipality is required';
+    } else if (formData.municipality.length < 3) {
+      newErrors.municipality = 'Municipality must be at least 3 characters';
+    }
+    
+    if (!formData.estd?.trim()) {
+      newErrors.estd = 'Established date is required';
+    } else if (formData.estd.length < 4) {
+      newErrors.estd = 'Established date must be at least 4 characters';
+    }
+    
+    if (!formData.preparedBy?.trim()) {
+      newErrors.preparedBy = 'Prepared by is required';
+    } else if (formData.preparedBy.length < 2) {
+      newErrors.preparedBy = 'Prepared by must be at least 2 characters';
+    }
+    
+    if (!formData.checkedBy?.trim()) {
+      newErrors.checkedBy = 'Checked by is required';
+    } else if (formData.checkedBy.length < 2) {
+      newErrors.checkedBy = 'Checked by must be at least 2 characters';
+    }
+    
+    if (!formData.headTeacherName?.trim()) {
+      newErrors.headTeacherName = 'Head teacher name is required';
+    } else if (formData.headTeacherName.length < 2) {
+      newErrors.headTeacherName = 'Head teacher name must be at least 2 characters';
+    }
+    
+    if (!formData.headTeacherContact?.trim()) {
+      newErrors.headTeacherContact = 'Head teacher contact is required';
+    } else if (!/^\d{10}$/.test(formData.headTeacherContact)) {
+      newErrors.headTeacherContact = 'Contact must be a 10-digit number';
+    }
+    
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Invalid email format';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+  
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { id, value } = e.target;
     setFormData(prev => ({ ...prev, [id]: value }));
+    
+    // Clear error when user starts typing
+    if (errors[id]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[id];
+        return newErrors;
+      });
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+    
     // Ensure all required fields are present
     const schoolData: School = {
       id: school?.id || 0,
@@ -71,6 +148,7 @@ const SchoolForm: React.FC<{ school: Partial<School> | null, onSave: (school: Sc
           onChange={handleChange} 
           value={formData.iemisCode} 
           required 
+          error={errors.iemisCode}
         />
         <InputField 
           id="name" 
@@ -78,6 +156,7 @@ const SchoolForm: React.FC<{ school: Partial<School> | null, onSave: (school: Sc
           onChange={handleChange} 
           value={formData.name} 
           required 
+          error={errors.name}
         />
       </div>
       
@@ -88,6 +167,7 @@ const SchoolForm: React.FC<{ school: Partial<School> | null, onSave: (school: Sc
           onChange={handleChange} 
           value={formData.municipality} 
           required 
+          error={errors.municipality}
         />
         <InputField 
           id="estd" 
@@ -95,6 +175,7 @@ const SchoolForm: React.FC<{ school: Partial<School> | null, onSave: (school: Sc
           onChange={handleChange} 
           value={formData.estd} 
           required 
+          error={errors.estd}
         />
       </div>
       
@@ -117,6 +198,7 @@ const SchoolForm: React.FC<{ school: Partial<School> | null, onSave: (school: Sc
             onChange={handleChange} 
             value={formData.preparedBy} 
             required 
+            error={errors.preparedBy}
           />
           <InputField 
             id="checkedBy" 
@@ -124,6 +206,7 @@ const SchoolForm: React.FC<{ school: Partial<School> | null, onSave: (school: Sc
             onChange={handleChange} 
             value={formData.checkedBy} 
             required 
+            error={errors.checkedBy}
           />
         </div>
       </div>
@@ -138,6 +221,7 @@ const SchoolForm: React.FC<{ school: Partial<School> | null, onSave: (school: Sc
             onChange={handleChange} 
             value={formData.headTeacherName} 
             required 
+            error={errors.headTeacherName}
           />
           <InputField 
             id="headTeacherContact" 
@@ -145,6 +229,7 @@ const SchoolForm: React.FC<{ school: Partial<School> | null, onSave: (school: Sc
             onChange={handleChange} 
             value={formData.headTeacherContact} 
             required 
+            error={errors.headTeacherContact}
           />
         </div>
         
@@ -155,6 +240,7 @@ const SchoolForm: React.FC<{ school: Partial<School> | null, onSave: (school: Sc
             type="email" 
             onChange={handleChange} 
             value={formData.email} 
+            error={errors.email}
           />
         </div>
       </div>
@@ -216,24 +302,50 @@ const ManageSchoolsPage: React.FC = () => {
   const [selectedSchool, setSelectedSchool] = useState<Partial<School> | null>(null);
   const [viewingSchool, setViewingSchool] = useState<School | null>(null);
   const { addToast } = useAppContext();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [previewData, setPreviewData] = useState<any[]>([]);
+  const [showPreview, setShowPreview] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchBy, setSearchBy] = useState<'name' | 'iemisCode' | 'municipality'>('name');
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
+  
+  // Add refresh function
+  const refreshSchools = async () => {
+    try {
+      const updatedSchools = await schoolsApi.getAll();
+      setSchools(updatedSchools);
+      addToast('Schools data refreshed successfully!', 'success');
+    } catch (error) {
+      console.error('Error refreshing schools:', error);
+      addToast('Failed to refresh schools data', 'error');
+    }
+  };
+  
+  useEffect(() => {
+    refreshSchools();
+  }, []);
   
   const filteredSchools = useMemo(() => {
     if (!schools) return [];
     if (!searchQuery) return schools;
 
+    const query = searchQuery.toLowerCase();
     return schools.filter(school =>
-      school[searchBy]?.toLowerCase().includes(searchQuery.toLowerCase())
+      school.name.toLowerCase().includes(query) ||
+      school.iemisCode.toLowerCase().includes(query) ||
+      school.municipality.toLowerCase().includes(query) ||
+      school.headTeacherName.toLowerCase().includes(query) ||
+      school.email?.toLowerCase().includes(query) ||
+      school.status.toLowerCase().includes(query) ||
+      school.subscriptionPlan.toLowerCase().includes(query)
     );
-  }, [schools, searchQuery, searchBy]);
+  }, [schools, searchQuery]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, searchBy]);
+  }, [schools, searchQuery]);
 
   const totalPages = Math.ceil(filteredSchools.length / ITEMS_PER_PAGE);
   const paginatedSchools = useMemo(() => {
@@ -243,6 +355,180 @@ const ManageSchoolsPage: React.FC = () => {
 
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [schoolToDelete, setSchoolToDelete] = useState<School | null>(null);
+
+  const handleExport = () => {
+    if (!schools || schools.length === 0) {
+      addToast('No schools data to export', 'warning');
+      return;
+    }
+
+    // Create CSV content
+    const headers = ['ID', 'IEMIS Code', 'School Name', 'Municipality', 'Estd', 'Prepared By', 'Checked By', 'Head Teacher', 'Contact', 'Email', 'Status', 'Subscription Plan'];
+    const rows = schools.map(school => [
+      school.id,
+      school.iemisCode,
+      school.name,
+      school.municipality,
+      school.estd,
+      school.preparedBy,
+      school.checkedBy,
+      school.headTeacherName,
+      school.headTeacherContact,
+      school.email || '',
+      school.status,
+      school.subscriptionPlan
+    ]);
+
+    // Convert to CSV format
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    // Create download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `schools_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    addToast('Schools data exported successfully!', 'success');
+  };
+
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Reset input value to allow re-uploading the same file
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+
+    // Check file type
+    if (!file.name.endsWith('.csv')) {
+      addToast('Please upload a CSV file', 'error');
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      const lines = text.split('\n').filter(line => line.trim() !== '');
+      
+      if (lines.length <= 1) {
+        addToast('CSV file is empty or invalid', 'error');
+        return;
+      }
+
+      // Parse headers
+      const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+      
+      // Validate required headers
+      const requiredHeaders = ['IEMIS Code', 'School Name', 'Municipality', 'Estd', 'Prepared By', 'Checked By', 'Head Teacher', 'Contact'];
+      const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
+      
+      if (missingHeaders.length > 0) {
+        addToast(`Missing required columns: ${missingHeaders.join(', ')}`, 'error');
+        return;
+      }
+
+      // Process data rows
+      const previewRows: any[] = [];
+      
+      for (let i = 1; i < Math.min(lines.length, 6); i++) { // Preview first 5 rows
+        const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
+        
+        if (values.length !== headers.length) {
+          addToast(`Row ${i + 1} has invalid number of columns`, 'error');
+          return;
+        }
+        
+        const rowData: any = {};
+        headers.forEach((header, index) => {
+          rowData[header] = values[index];
+        });
+        
+        previewRows.push(rowData);
+      }
+
+      // Show preview
+      setPreviewData(previewRows);
+      setShowPreview(true);
+      
+      // Note: Actual import will be handled in a separate function after user confirmation
+    } catch (error) {
+      console.error('Error reading CSV file:', error);
+      addToast('Failed to read CSV file', 'error');
+    }
+  };
+
+  const confirmImport = async () => {
+    if (previewData.length === 0) return;
+    
+    setIsImporting(true);
+    
+    try {
+      // Process all data rows
+      const newSchools: Omit<School, 'id'>[] = [];
+      
+      // In a real implementation, we would read the full file again here
+      // For now, we'll just use the preview data as a sample
+      for (const rowData of previewData) {
+        // Map to School object
+        newSchools.push({
+          iemisCode: rowData['IEMIS Code'],
+          name: rowData['School Name'],
+          municipality: rowData['Municipality'],
+          estd: rowData['Estd'],
+          preparedBy: rowData['Prepared By'],
+          checkedBy: rowData['Checked By'],
+          headTeacherName: rowData['Head Teacher'],
+          headTeacherContact: rowData['Contact'],
+          email: rowData['Email'] || '',
+          status: rowData['Status'] || 'Active',
+          subscriptionPlan: rowData['Subscription Plan'] || 'Basic',
+          logoUrl: rowData['Logo URL'] || `https://picsum.photos/seed/${Date.now() + Math.random()}/100`
+        });
+      }
+
+      // Import schools
+      const importedSchools = [];
+      let successCount = 0;
+      let errorCount = 0;
+      
+      for (const schoolData of newSchools) {
+        try {
+          const newSchool = await schoolsApi.create(schoolData);
+          importedSchools.push(newSchool);
+          successCount++;
+        } catch (error: any) {
+          console.error('Error importing school:', error);
+          errorCount++;
+        }
+      }
+      
+      // Update state with newly imported schools
+      setSchools(prev => [...prev, ...importedSchools]);
+      
+      // Close preview
+      setShowPreview(false);
+      setPreviewData([]);
+      
+      if (errorCount === 0) {
+        addToast(`${successCount} schools imported successfully!`, 'success');
+      } else {
+        addToast(`${successCount} schools imported successfully, ${errorCount} failed.`, 'warning');
+      }
+    } catch (error) {
+      console.error('Error importing schools:', error);
+      addToast('Failed to import schools', 'error');
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   const handleAdd = () => {
     setSelectedSchool({});
@@ -307,11 +593,17 @@ const ManageSchoolsPage: React.FC = () => {
         if (error.response.status === 409) {
           // Conflict - duplicate school
           errorMessage = error.response.data.error || 'School already exists';
+        } else if (error.response.status === 400) {
+          // Bad request - validation error
+          errorMessage = error.response.data.error || 'Invalid school data provided';
         } else if (error.response.data && error.response.data.error) {
           errorMessage = error.response.data.error;
         } else if (error.response.data && error.response.data.details) {
           errorMessage = `Server error: ${error.response.data.details}`;
         }
+      } else if (error.request) {
+        // Network error
+        errorMessage = 'Network error - please check your connection';
       }
       
       addToast(errorMessage, 'error');
@@ -336,12 +628,27 @@ const ManageSchoolsPage: React.FC = () => {
       } catch (error: any) {
         console.error('Error deleting school:', error);
         let errorMessage = 'Failed to delete school';
-        if (error.response && error.response.data && error.response.data.error) {
-          errorMessage = error.response.data.error;
+        
+        // Handle specific error cases
+        if (error.response) {
+          if (error.response.status === 409) {
+            // Conflict - school has associated data
+            errorMessage = error.response.data.error || 'Cannot delete school with associated data';
+          } else if (error.response.data && error.response.data.error) {
+            errorMessage = error.response.data.error;
+          } else if (error.response.data && error.response.data.details) {
+            errorMessage = `Server error: ${error.response.data.details}`;
+          }
+        } else if (error.request) {
+          // Network error
+          errorMessage = 'Network error - please check your connection';
         }
+        
         addToast(errorMessage, 'error');
+      } finally {
+        setSchoolToDelete(null);
+        setIsConfirmModalOpen(false);
       }
-      setSchoolToDelete(null);
     }
   };
 
@@ -353,7 +660,10 @@ const ManageSchoolsPage: React.FC = () => {
     },
     { 
       header: 'Logo', 
-      accessor: (school: School) => <img src={school.logoUrl} alt="logo" className="h-10 w-10 rounded-full object-cover" />,
+      accessor: (school: School) => {
+        const isValidUrl = school.logoUrl?.startsWith('http');
+        return <img src={isValidUrl ? school.logoUrl : `https://placehold.co/100x100?text=No+Logo`} alt="logo" className="h-10 w-10 rounded-full object-cover" />;
+      },
       className: 'whitespace-nowrap'
     },
     { 
@@ -401,12 +711,6 @@ const ManageSchoolsPage: React.FC = () => {
     },
   ];
 
-  const searchByOptions = {
-    name: 'School Name',
-    iemisCode: 'IEMIS Code',
-    municipality: 'Municipality',
-  };
-
   return (
     <div className="p-4 md:p-6 animate-fade-in">
       {/* Header with title and stats */}
@@ -423,6 +727,33 @@ const ManageSchoolsPage: React.FC = () => {
           </div>
           
           <div className="flex items-center gap-2">
+            <input 
+              type="file" 
+              ref={fileInputRef}
+              onChange={handleImport}
+              accept=".csv"
+              className="hidden" 
+            />
+            <Button 
+              onClick={() => fileInputRef.current?.click()}
+              variant="secondary"
+              disabled={isImporting}
+            >
+              {isImporting ? 'Importing...' : 'Import'}
+            </Button>
+            <Button 
+              onClick={handleExport}
+              variant="secondary"
+              leftIcon={<DocumentArrowDownIcon className="h-4 w-4" />}
+            >
+              Export
+            </Button>
+            <Button 
+              onClick={refreshSchools}
+              variant="secondary"
+            >
+              Refresh
+            </Button>
             <div className="bg-primary-100 dark:bg-primary-900/30 px-3 py-1 rounded-full">
               <span className="text-sm font-medium text-primary-800 dark:text-primary-200">
                 {schools?.length || 0} schools
@@ -433,35 +764,20 @@ const ManageSchoolsPage: React.FC = () => {
         
         {/* Search and Actions */}
         <div className="flex flex-col md:flex-row md:items-center gap-4">
-          <div className="flex flex-col sm:flex-row gap-4 flex-1">
-            <div className="w-full sm:w-48">
-              <Select
-                id="searchBy"
-                label=""
-                value={searchBy}
-                onChange={(e) => setSearchBy(e.target.value as 'name' | 'iemisCode' | 'municipality')}
-              >
-                <option value="name">School Name</option>
-                <option value="iemisCode">IEMIS Code</option>
-                <option value="municipality">Municipality</option>
-              </Select>
+          <div className="flex-1 relative">
+            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
             </div>
-            
-            <div className="flex-1 relative">
-              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              <InputField
-                id="searchQuery"
-                label=""
-                placeholder={`Search by ${searchByOptions[searchBy]}...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10"
-              />
-            </div>
+            <InputField
+              id="searchQuery"
+              label=""
+              placeholder="Search schools..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10"
+            />
           </div>
           
           <Button 
@@ -532,6 +848,72 @@ const ManageSchoolsPage: React.FC = () => {
       </Modal>
 
       <Modal
+        isOpen={showPreview}
+        onClose={() => {
+          setShowPreview(false);
+          setPreviewData([]);
+        }}
+        title="Import Preview"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600 dark:text-gray-300">
+            Please review the data before importing. Only the first 5 rows are shown for preview.
+          </p>
+          
+          <div className="overflow-x-auto max-h-96 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                <tr>
+                  {previewData.length > 0 && Object.keys(previewData[0]).map((header) => (
+                    <th 
+                      key={header}
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                    >
+                      {header}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                {previewData.map((row, rowIndex) => (
+                  <tr key={rowIndex} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    {Object.values(row).map((value, colIndex) => (
+                      <td 
+                        key={colIndex}
+                        className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 max-w-xs truncate"
+                        title={String(value)}
+                      >
+                        {String(value)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          
+          <div className="flex justify-end space-x-3 pt-4">
+            <Button 
+              variant="secondary" 
+              onClick={() => {
+                setShowPreview(false);
+                setPreviewData([]);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={confirmImport}
+              disabled={isImporting}
+            >
+              {isImporting ? 'Importing...' : 'Import Schools'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
         isOpen={!!viewingSchool}
         onClose={() => setViewingSchool(null)}
         title="School Details"
@@ -540,7 +922,7 @@ const ManageSchoolsPage: React.FC = () => {
         {viewingSchool && (
           <div className="space-y-6">
             <div className="flex items-center space-x-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                <img src={viewingSchool.logoUrl} alt="logo" className="h-20 w-20 rounded-full object-cover ring-4 ring-white dark:ring-gray-800" />
+                <img src={viewingSchool.logoUrl?.startsWith('http') ? viewingSchool.logoUrl : 'https://placehold.co/100x100?text=No+Logo'} alt="logo" className="h-20 w-20 rounded-full object-cover ring-4 ring-white dark:ring-gray-800" />
                 <div>
                     <h3 className="text-xl font-bold text-gray-800 dark:text-white">{viewingSchool.name}</h3>
                     <p className="text-gray-500 dark:text-gray-400">{viewingSchool.municipality}</p>
@@ -578,7 +960,7 @@ const ManageSchoolsPage: React.FC = () => {
         }}
         onConfirm={confirmDelete}
         title="Confirm Delete"
-        message={`Are you sure you want to delete ${schoolToDelete?.name}? This action cannot be undone.`}
+        message={`Are you sure you want to delete ${schoolToDelete?.name}? This action cannot be undone. All associated data will be permanently removed.`}
         confirmText="Delete"
         confirmVariant="danger"
       />

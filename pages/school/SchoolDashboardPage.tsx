@@ -36,7 +36,7 @@ const SchoolProfileCard: React.FC<SchoolProfileCardProps> = ({ school, totalStud
     return (
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg mb-6">
              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-6 mb-6 pb-6 border-b dark:border-gray-700">
-                <img src={school.logoUrl} alt="logo" className="h-24 w-24 rounded-full object-cover ring-4 ring-primary-200 dark:ring-primary-800" />
+                <img src={school.logoUrl?.startsWith('http') ? school.logoUrl : 'https://placehold.co/100x100?text=No+Logo'} alt="logo" className="h-24 w-24 rounded-full object-cover ring-4 ring-primary-200 dark:ring-primary-800" />
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{school.name}</h1>
                     <p className="text-gray-500 dark:text-gray-400 mt-1">{school.municipality}</p>
@@ -67,9 +67,8 @@ const SchoolProfileCard: React.FC<SchoolProfileCardProps> = ({ school, totalStud
     );
 };
 
-const SchoolDashboardPage: React.FC<{ school?: School }> = ({ school }) => {
+const SchoolDashboardPage: React.FC<{ school: School | null }> = ({ school }) => {
   const { setPageTitle } = usePageTitle();
-  const { loggedInSchool } = useAuth();
   const { students, subjects, appSettings } = useData();
   const navigate = useNavigate();
   const [assignments, setAssignments] = useState<{ [studentId: string]: number[] }>({});
@@ -81,7 +80,7 @@ const SchoolDashboardPage: React.FC<{ school?: School }> = ({ school }) => {
     setPageTitle('Dashboard');
   }, [setPageTitle]);
 
-  const schoolToDisplay = school || loggedInSchool;
+  const schoolToDisplay = school;
 
   // Fetch real data for assignments and marks
   useEffect(() => {
