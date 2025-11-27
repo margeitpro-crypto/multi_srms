@@ -16,6 +16,27 @@ interface TableProps<T> {
 }
 
 function Table<T,>({ columns, data, isLoading, renderActions }: TableProps<T>) {
+  // Helper function to safely render values
+  const renderCellValue = (value: any): React.ReactNode => {
+    // If it's already a React node, return as is
+    if (React.isValidElement(value) || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      return value;
+    }
+    
+    // If it's null or undefined, render as empty string
+    if (value === null || value === undefined) {
+      return '';
+    }
+    
+    // If it's an object, convert to string representation
+    if (typeof value === 'object') {
+      return JSON.stringify(value);
+    }
+    
+    // For any other type, convert to string
+    return String(value);
+  };
+
   return (
     <div className="overflow-x-auto bg-white dark:bg-gray-800 shadow-md rounded-lg">
       <table className="w-full text-xs text-left text-gray-500 dark:text-gray-400">
@@ -49,7 +70,7 @@ function Table<T,>({ columns, data, isLoading, renderActions }: TableProps<T>) {
                   <td key={colIndex} className={`px-6 py-4 ${col.className || ''}`}>
                     {typeof col.accessor === 'function'
                       ? col.accessor(item, rowIndex)
-                      : String(item[col.accessor as keyof T])}
+                      : renderCellValue(item[col.accessor as keyof T])}
                   </td>
                 ))}
                 {renderActions && (

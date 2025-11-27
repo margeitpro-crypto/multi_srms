@@ -41,6 +41,19 @@ This is a comprehensive school result management system for Grade 11 and 12 inst
    - Frontend: http://localhost:5173
    - Backend API: http://localhost:3002
 
+## Deployment
+
+### Vercel Deployment (Recommended)
+
+1. Push your code to GitHub
+2. Connect your GitHub repository to Vercel
+3. Set the required environment variables in Vercel (see DEPLOYMENT.md for details)
+4. Deploy the application
+
+### Traditional Deployment
+
+See DEPLOYMENT.md for detailed instructions on traditional deployment methods.
+
 ## Available Scripts
 
 - `npm run dev` - Start frontend development server

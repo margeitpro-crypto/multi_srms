@@ -46,8 +46,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         if (error) {
           console.error('Error checking user session:', error);
-          setIsLoading(false);
-          return;
+          // Don't return here, continue with unauthenticated state
         }
         
         if (session) {
@@ -132,6 +131,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return true;
       }
       
+      // If we get here, there was no error but also no session
+      addToast('Login failed - no session returned', 'error');
       return false;
     } catch (error: any) {
       console.error('Login error:', error);
@@ -162,10 +163,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return true;
       }
       
+      addToast('Registration failed - no user returned', 'error');
       return false;
     } catch (error: any) {
       console.error('Registration error:', error);
-      const errorMessage = error.response?.data?.error || 'Registration failed. Please try again.';
+      const errorMessage = error.response?.data?.error || error.message || 'Registration failed. Please try again.';
       addToast(errorMessage, 'error');
       return false;
     } finally {

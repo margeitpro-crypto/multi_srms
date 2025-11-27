@@ -12,9 +12,22 @@ interface LoginResponse {
   };
 }
 
+// Determine the base URL based on environment
+const getBaseURL = () => {
+  if (typeof window !== 'undefined') {
+    // Client-side - use relative URL for proxy in development, absolute URL in production
+    if (process.env.NODE_ENV === 'production') {
+      return window.location.origin;
+    }
+    return ''; // Use relative URL for proxy
+  }
+  // Server-side - use backend URL
+  return process.env.BACKEND_URL || 'http://localhost:3002';
+};
+
 // Real API client configuration
 const api = axios.create({
-  baseURL: '/api', // Use relative URL to work with proxy
+  baseURL: getBaseURL() + '/api',
   headers: {
     'Content-Type': 'application/json',
   }

@@ -11,6 +11,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "start": "cross-env NODE_ENV=production tsx backend/server.ts",
+    "vercel-build": "npm run build",
+    "test:vercel": "node test-vercel.js",
     "init:db": "tsx scripts/init-db.ts",
     "init:academic-years": "tsx scripts/init-academic-years.ts",
     "init:app-settings": "tsx scripts/init-app-settings.ts",

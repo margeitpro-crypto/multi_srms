@@ -5,7 +5,32 @@
 - PostgreSQL database or Supabase account
 - Environment variables configured
 
-## Build Process
+## Vercel Deployment (Recommended)
+
+This application can be deployed to Vercel with minimal configuration:
+
+1. Push your code to GitHub
+2. Connect your GitHub repository to Vercel
+3. Set the following environment variables in Vercel:
+   ```
+   SUPABASE_DB_URL=your_supabase_database_connection_string
+   SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+   SUPABASE_PROJECT_REF=your_supabase_project_reference
+   SUPABASE_URL=your_supabase_project_url
+   SUPABASE_KEY=your_supabase_anon_key
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=your_supabase_publishable_key
+   JWT_SECRET=your_jwt_secret_key
+   PORT=3002
+   ```
+
+4. Deploy the application
+
+Vercel will automatically detect the Express server and deploy it correctly.
+
+## Traditional Deployment
+
+### Build Process
 
 1. Install dependencies:
 ```bash

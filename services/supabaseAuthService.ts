@@ -48,9 +48,15 @@ export async function registerUser(
       school_id: schoolId
     });
 
+    // Check if response data exists
+    if (!response.data) {
+      return { user: null, error: 'Invalid response from server' };
+    }
+
     return { user: response.data.user, error: null };
   } catch (error: any) {
-    const errorMessage = error.response?.data?.error || 'Registration failed';
+    console.error('Registration error:', error);
+    const errorMessage = error.response?.data?.error || error.message || 'Registration failed';
     return { user: null, error: errorMessage };
   }
 }
@@ -71,6 +77,16 @@ export async function loginUser(
       password
     });
 
+    // Check if response data exists
+    if (!response.data) {
+      return { session: null, error: 'Invalid response from server' };
+    }
+
+    // Check if token and user exist in response
+    if (!response.data.token || !response.data.user) {
+      return { session: null, error: response.data.error || 'Login failed' };
+    }
+
     const session: AuthSession = {
       token: response.data.token,
       user: response.data.user
@@ -78,7 +94,8 @@ export async function loginUser(
 
     return { session, error: null };
   } catch (error: any) {
-    const errorMessage = error.response?.data?.error || 'Login failed';
+    console.error('Login error:', error);
+    const errorMessage = error.response?.data?.error || error.message || 'Login failed';
     return { session: null, error: errorMessage };
   }
 }
@@ -93,6 +110,7 @@ export async function logoutUser(): Promise<{ error: string | null }> {
     // by removing the token from storage
     return { error: null };
   } catch (error: any) {
+    console.error('Logout error:', error);
     return { error: error.message || 'Logout failed' };
   }
 }
@@ -115,11 +133,20 @@ export async function getCurrentUser(): Promise<{ session: AuthSession | null; e
       return { session: null, error: null };
     }
 
-    const user: User = JSON.parse(userStr);
+    let user: User;
+    try {
+      user = JSON.parse(userStr);
+    } catch (parseError) {
+      // If parsing fails, remove invalid data
+      localStorage.removeItem('currentUser');
+      return { session: null, error: null };
+    }
+
     const session: AuthSession = { token, user };
 
     return { session, error: null };
   } catch (error: any) {
+    console.error('Get current user error:', error);
     return { session: null, error: error.message || 'Failed to get current user' };
   }
 }
@@ -143,11 +170,20 @@ export async function refreshSession(): Promise<{ session: AuthSession | null; e
       return { session: null, error: null };
     }
 
-    const user: User = JSON.parse(userStr);
+    let user: User;
+    try {
+      user = JSON.parse(userStr);
+    } catch (parseError) {
+      // If parsing fails, remove invalid data
+      localStorage.removeItem('currentUser');
+      return { session: null, error: null };
+    }
+
     const session: AuthSession = { token, user };
 
     return { session, error: null };
   } catch (error: any) {
+    console.error('Refresh session error:', error);
     return { session: null, error: error.message || 'Failed to refresh session' };
   }
 }
