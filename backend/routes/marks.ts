@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { marksService, studentsService } from '../services/dbService';
+import { studentMarksService, studentsService } from '../services/dbService';
 import { AuthRequest } from '../middleware/authMiddleware';
 
 const router = Router();
@@ -28,7 +28,7 @@ router.get('/:studentId/:year', async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Access denied' });
     }
     
-    const marks = await marksService.getStudentMarks(student.id, academicYear);
+    const marks = await studentMarksService.getStudentMarks(student.id, academicYear);
     
     res.json(marks);
   } catch (err) {
@@ -66,7 +66,7 @@ router.post('/:studentId/:year', async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Access denied' });
     }
     
-    const savedMarks = await marksService.saveStudentMarks(student.id, academicYear, marksData);
+    const savedMarks = await studentMarksService.saveStudentMarks(student.id, academicYear, marksData);
     
     res.status(200).json({ 
       message: 'Marks saved successfully',
@@ -102,7 +102,7 @@ router.delete('/:studentId/:year', async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Access denied' });
     }
     
-    await marksService.deleteStudentMarks(student.id, academicYear);
+    await studentMarksService.deleteStudentMarks(student.id, academicYear);
     
     res.status(200).json({ 
       message: 'Marks deleted successfully'

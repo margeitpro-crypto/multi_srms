@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
-import { User, createUser, getUserByIemisCode, getUserByEmail, verifyPassword } from './userService';
+import { User, createUser, getUserByEmail, verifyPassword } from './userService';
 import logger from './logger';
 
 // JWT secret - in production, use environment variable
@@ -10,7 +10,6 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 // Define the JWT payload type
 interface JWTPayload {
   id: number;
-  iemis_code: string;
   email: string | null;
   role: 'admin' | 'school';
   school_id: number | null;
@@ -24,7 +23,6 @@ interface JWTPayload {
 export function generateToken(user: User): string {
   const payload: JWTPayload = {
     id: user.id,
-    iemis_code: user.iemis_code,
     email: user.email,
     role: user.role,
     school_id: user.school_id
@@ -54,7 +52,6 @@ export function verifyToken(token: string): JWTPayload | null {
  * @returns Promise with registered user or error
  */
 export async function register(userData: {
-  iemis_code: string;
   email?: string;
   password: string;
   role: 'admin' | 'school';
@@ -62,12 +59,6 @@ export async function register(userData: {
 }): Promise<{ user: User | null; error: string | null }> {
   try {
     // Check if user already exists
-    const existingUser = await getUserByIemisCode(userData.iemis_code);
-    if (existingUser) {
-      return { user: null, error: 'User with this IEMIS Code already exists' };
-    }
-    
-    // Check if email is already used (if provided)
     if (userData.email) {
       const existingEmailUser = await getUserByEmail(userData.email);
       if (existingEmailUser) {
@@ -87,14 +78,13 @@ export async function register(userData: {
     
     // Create user with hashed password
     const user = await createUser({
-      iemis_code: userData.iemis_code,
       email: userData.email,
       password: userData.password,
       role: userData.role,
       school_id: userData.role === 'school' ? userData.school_id : null
     });
     
-    logger.info('User registered successfully', { userId: user.id, iemisCode: user.iemis_code });
+    logger.info('User registered successfully', { userId: user.id });
     
     return { user, error: null };
   } catch (error: any) {
@@ -105,20 +95,17 @@ export async function register(userData: {
 
 /**
  * Authenticate user login
- * @param identifier User's IEMIS code or email
+ * @param email User's email
  * @param password User's password
  * @returns Promise with authenticated user and token or error
  */
 export async function login(
-  identifier: string,
+  email: string,
   password: string
 ): Promise<{ user: User | null; token: string | null; error: string | null }> {
   try {
-    // Find user by IEMIS code or email
-    let user = await getUserByIemisCode(identifier);
-    if (!user && identifier.includes('@')) {
-      user = await getUserByEmail(identifier);
-    }
+    // Find user by email
+    let user = await getUserByEmail(email);
     
     if (!user) {
       return { user: null, token: null, error: 'Invalid credentials' };
@@ -133,7 +120,7 @@ export async function login(
     // Generate JWT token
     const token = generateToken(user);
     
-    logger.info('User login successful', { userId: user.id, iemisCode: user.iemis_code });
+    logger.info('User login successful', { userId: user.id });
     
     return { user, token, error: null };
   } catch (error: any) {
@@ -169,7 +156,7 @@ export async function changePassword(
     }
     
     // Get the current user
-    const user = await getUserByEmail(userId.toString()) || await getUserByIemisCode(userId.toString());
+    const user = await getUserByEmail(userId.toString());
     if (!user) {
       return { success: false, error: 'User not found' };
     }

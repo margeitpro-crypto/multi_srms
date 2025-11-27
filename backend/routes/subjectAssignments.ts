@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { subjectAssignmentsService, studentsService } from '../services/dbService';
+import { studentSubjectAssignmentsService, studentsService } from '../services/dbService';
 import { AuthRequest } from '../middleware/authMiddleware';
 
 const router = Router();
@@ -28,8 +28,8 @@ router.get('/:studentId/:year', async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Access denied' });
     }
     
-    const subjectIds = await subjectAssignmentsService.getStudentAssignments(student.id, academicYear);
-    const extraCreditSubjectId = await subjectAssignmentsService.getStudentExtraCreditAssignment(student.id, academicYear);
+    const subjectIds = await studentSubjectAssignmentsService.getStudentAssignments(student.id, academicYear);
+    const extraCreditSubjectId = await studentSubjectAssignmentsService.getStudentExtraCreditAssignment(student.id, academicYear);
     
     res.json({
       subjectIds,
@@ -74,9 +74,9 @@ router.post('/:studentId/:year', async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Access denied' });
     }
     
-    await subjectAssignmentsService.assignSubjectsToStudent(student.id, subjectIds, academicYear);
+    await studentSubjectAssignmentsService.assignSubjectsToStudent(student.id, subjectIds, academicYear);
     
-    await subjectAssignmentsService.assignExtraCreditSubjectToStudent(
+    await studentSubjectAssignmentsService.assignExtraCreditSubjectToStudent(
       student.id, 
       extraCreditSubjectId !== undefined ? extraCreditSubjectId : null, 
       academicYear
@@ -117,9 +117,9 @@ router.delete('/:studentId/:year', async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Access denied' });
     }
     
-    await subjectAssignmentsService.deleteStudentAssignments(student.id, academicYear);
+    await studentSubjectAssignmentsService.deleteStudentAssignments(student.id, academicYear);
     
-    await subjectAssignmentsService.deleteStudentExtraCreditAssignment(student.id, academicYear);
+    await studentSubjectAssignmentsService.deleteStudentExtraCreditAssignment(student.id, academicYear);
     
     res.status(200).json({ 
       message: 'Subject assignments deleted successfully'

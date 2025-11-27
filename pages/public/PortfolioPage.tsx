@@ -116,6 +116,10 @@ const PortfolioPage: React.FC = () => {
                                 src="https://lh3.googleusercontent.com/pw/AP1GczO8lppD4c4e0duPD0vcdZ-RfTqFfPRm7va08ZcUrdgsWRHDnNvaVbsX-8RAhWINaSyxwIPrqz2lw54v7wif-_iYo3VSRNsgBZBHoBxgqwPT-Cmgv2E=w1920-h1080" 
                                 alt="Man Singh Rana" 
                                 className="w-full h-full object-cover"
+                                onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.src = 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=400&q=80';
+                                }}
                             />
                         </div>
                     </div>

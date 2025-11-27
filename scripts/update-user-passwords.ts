@@ -20,23 +20,23 @@ async function updateUserPasswords() {
     // Update passwords for existing users
     const usersToUpdate = [
       {
-        iemis_code: '9827792360',
+        email: 'margeitpro@gmail.com',
         password: 'admin123'
       },
       {
-        iemis_code: '9827792361',
+        email: 'tsguideman@gmail.com',
         password: 'school123'
       },
       {
-        iemis_code: '9827792362',
+        email: 'itmsinghyt@gmail.com',
         password: 'school123'
       },
       {
-        iemis_code: '9827792363',
+        email: 'office@sunrise.edu.np',
         password: 'school123'
       },
       {
-        iemis_code: '9827792364',
+        email: 'director@riverside.edu.np',
         password: 'school123'
       }
     ];
@@ -49,12 +49,12 @@ async function updateUserPasswords() {
         const password_hash = await bcrypt.hash(user.password, saltRounds);
         
         await client.query(
-          `UPDATE users SET password_hash = $1, updated_at = NOW() WHERE iemis_code = $2`,
-          [password_hash, user.iemis_code]
+          `UPDATE users SET password_hash = $1, updated_at = NOW() WHERE email = $2`,
+          [password_hash, user.email]
         );
-        console.log(`  ✅ Password updated for user ${user.iemis_code}`);
+        console.log(`  ✅ Password updated for user ${user.email}`);
       } catch (error) {
-        console.error(`  ❌ Error updating password for user ${user.iemis_code}:`, error);
+        console.error(`  ❌ Error updating password for user ${user.email}:`, error);
       }
     }
     

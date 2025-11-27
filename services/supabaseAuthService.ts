@@ -3,7 +3,6 @@ import api from './api';
 // Define the user type
 export interface User {
   id: number;
-  iemis_code: string;
   email: string | null;
   role: 'admin' | 'school';
   school_id: number | null;
@@ -29,7 +28,6 @@ interface LoginResponse {
 
 /**
  * Register a new user
- * @param iemisCode User's IEMIS code
  * @param email User's email
  * @param password User's password
  * @param role User's role (admin or school)
@@ -37,7 +35,6 @@ interface LoginResponse {
  * @returns Promise with user data or error
  */
 export async function registerUser(
-  iemisCode: string,
   email: string,
   password: string,
   role: 'admin' | 'school',
@@ -45,7 +42,6 @@ export async function registerUser(
 ): Promise<{ user: User | null; error: string | null }> {
   try {
     const response = await api.post<RegisterResponse>('/users/register', {
-      iemis_code: iemisCode,
       email,
       password,
       role,
@@ -61,17 +57,17 @@ export async function registerUser(
 
 /**
  * Login user
- * @param identifier User's IEMIS code or email
+ * @param email User's email
  * @param password User's password
  * @returns Promise with session data or error
  */
 export async function loginUser(
-  identifier: string,
+  email: string,
   password: string
 ): Promise<{ session: AuthSession | null; error: string | null }> {
   try {
     const response = await api.post<LoginResponse>('/users/login', {
-      identifier,
+      email,
       password
     });
 

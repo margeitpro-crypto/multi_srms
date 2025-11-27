@@ -7,7 +7,6 @@ import logger from '../services/logger';
 export interface AuthRequest extends Request {
   user?: {
     id: number;
-    iemis_code: string;
     email: string | null;
     role: 'admin' | 'school';
     school_id: number | null;
@@ -50,7 +49,6 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
     // Attach user information to the request
     req.user = {
       id: user.id,
-      iemis_code: user.iemis_code,
       email: user.email,
       role: user.role,
       school_id: user.school_id
@@ -58,8 +56,7 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
 
     logger.info('User authenticated successfully', { 
       userId: user.id, 
-      role: user.role,
-      iemisCode: user.iemis_code
+      role: user.role
     });
     
     next();

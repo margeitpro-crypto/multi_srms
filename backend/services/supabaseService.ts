@@ -1,16 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Load environment variables
+// Load environment variables - prioritize the JWT key for client operations
 const supabaseUrl = process.env.SUPABASE_URL || 'https://hxfjqeoghziymujnfjpu.supabase.co';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabaseKey = process.env.SUPABASE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-// Create Supabase client with service role key for backend operations
-export const supabase = createClient(supabaseUrl, supabaseKey, {
+// Create Supabase client with JWT key for backend operations
+// Only create the client if we have a key
+export const supabase = supabaseKey ? createClient(supabaseUrl, supabaseKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false
   }
-});
+}) : null;
 
 /**
  * Verify JWT token using Supabase Auth
@@ -19,6 +20,12 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
  */
 export async function verifyToken(token: string) {
   try {
+    // Check if supabase client is available
+    if (!supabase) {
+      console.error('Supabase client not initialized');
+      return null;
+    }
+    
     // Set the auth token
     const { data, error } = await supabase.auth.getUser(token);
     
@@ -41,6 +48,12 @@ export async function verifyToken(token: string) {
  */
 export async function getUserById(userId: string) {
   try {
+    // Check if supabase client is available
+    if (!supabase) {
+      console.error('Supabase client not initialized');
+      return null;
+    }
+    
     const { data, error } = await supabase.auth.admin.getUserById(userId);
     
     if (error) {

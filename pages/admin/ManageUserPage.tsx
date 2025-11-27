@@ -33,7 +33,6 @@ const ManageUserPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [formData, setFormData] = useState({
-    iemis_code: '',
     email: '',
     password: '',
     role: 'school' as 'admin' | 'school',
@@ -101,7 +100,6 @@ const ManageUserPage: React.FC = () => {
   const handleAdd = () => {
     setSelectedUser(null);
     setFormData({
-      iemis_code: '',
       email: '',
       password: '',
       role: 'school',
@@ -113,7 +111,6 @@ const ManageUserPage: React.FC = () => {
   const handleEdit = (user: User) => {
     setSelectedUser(user);
     setFormData({
-      iemis_code: user.iemis_code,
       email: user.email || '',
       password: '',
       role: user.role,
@@ -132,7 +129,6 @@ const ManageUserPage: React.FC = () => {
     setIsModalOpen(false);
     setSelectedUser(null);
     setFormData({
-      iemis_code: '',
       email: '',
       password: '',
       role: 'school',
@@ -150,7 +146,6 @@ const ManageUserPage: React.FC = () => {
   useEffect(() => {
     if (!isModalOpen && !selectedUser) {
       setFormData({
-        iemis_code: '',
         email: '',
         password: '',
         role: 'school',
@@ -182,7 +177,6 @@ const ManageUserPage: React.FC = () => {
       if (selectedUser) {
         // Update existing user
         const response = await api.put(`/users/${selectedUser.id}`, {
-          iemis_code: formData.iemis_code,
           email: formData.email,
           role: formData.role,
           school_id: formData.school_id
@@ -200,14 +194,13 @@ const ManageUserPage: React.FC = () => {
           return;
         }
         
-        // Validate school_id is required for school role
+        // Validate school selection for school users
         if (formData.role === 'school' && !formData.school_id) {
           addToast('School is required for school users', 'error');
           return;
         }
         
         const response = await api.post('/users', {
-          iemis_code: formData.iemis_code,
           email: formData.email,
           password: formData.password,
           role: formData.role,
@@ -258,7 +251,6 @@ const ManageUserPage: React.FC = () => {
   }, [formData.role, setFormData]);
 
   const filteredUsers = users.filter(user =>
-    user.iemis_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (user.email && user.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
     user.role.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -268,11 +260,6 @@ const ManageUserPage: React.FC = () => {
       header: 'ID', 
       accessor: (item: User) => item.id,
       className: 'whitespace-nowrap text-gray-500 dark:text-gray-400'
-    },
-    { 
-      header: 'IEMIS Code', 
-      accessor: (item: User) => item.iemis_code,
-      className: 'font-medium text-gray-900 dark:text-white'
     },
     { 
       header: 'Email', 
@@ -290,253 +277,226 @@ const ManageUserPage: React.FC = () => {
     },
     { 
       header: 'School', 
-      accessor: (item: User) => {
-        if (!item.school_id) return <span className="text-gray-400">N/A</span>;
-        const school = schools.find(s => s.id === item.school_id);
-        return school ? (
-          <div>
-            <div className="font-medium text-gray-900 dark:text-white">{school.name}</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">{school.iemisCode}</div>
-          </div>
-        ) : (
-          <span className="text-gray-400">ID: {item.school_id}</span>
-        );
-      },
-      className: 'whitespace-nowrap'
+      accessor: (item: User) => getSchoolName(item.school_id),
+      className: 'text-gray-500 dark:text-gray-400'
     },
-    {
-      header: 'Actions',
+    { 
+      header: 'Actions', 
       accessor: (item: User) => (
-        <DropdownMenu
-          trigger={
-            <IconButton 
-              size="sm" 
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-              </svg>
-            </IconButton>
-          }
-        >
-          <DropdownMenuItem onClick={() => handleEdit(item)}>
-            <div className="flex items-center">
-              <PencilIcon className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
-              <span>Edit</span>
-            </div>
-          </DropdownMenuItem>
-          <DropdownMenuItem 
-            onClick={() => handleDelete(item)}
-            className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
+        <div className="flex space-x-2">
+          <IconButton 
+            onClick={() => handleEdit(item)}
+            aria-label="Edit user"
+            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
           >
-            <div className="flex items-center">
-              <TrashIcon className="w-4 h-4 mr-2" />
-              <span>Delete</span>
-            </div>
-          </DropdownMenuItem>
-        </DropdownMenu>
+            <PencilIcon className="h-5 w-5" />
+          </IconButton>
+          <IconButton 
+            onClick={() => handleDelete(item)}
+            aria-label="Delete user"
+            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+          >
+            <TrashIcon className="h-5 w-5" />
+          </IconButton>
+        </div>
       ),
       className: 'text-right'
     }
   ];
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 md:p-6">
-        {/* Header with title and stats */}
-        <div className="mb-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <UserGroupIcon className="h-6 w-6 text-primary-600" />
-                Manage Users
-              </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Add, edit, and manage user accounts
-              </p>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <div className="bg-primary-100 dark:bg-primary-900/30 px-3 py-1 rounded-full">
-                <span className="text-sm font-medium text-primary-800 dark:text-primary-200">
-                  {users.length} users
-                </span>
-              </div>
-            </div>
+    <div className="py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Manage Users</h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              View and manage user accounts
+            </p>
           </div>
-          
-          {/* Search and Actions */}
-          <div className="flex flex-col md:flex-row md:items-center gap-4">
-            <div className="flex-1 relative">
-              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              <InputField
-                id="search"
-                label=""
-                placeholder="Search by IEMIS code, email or role..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10"
-              />
-            </div>
-            
-            <Button 
+          <div className="mt-4 flex md:mt-0 md:ml-4">
+            <Button
               onClick={handleAdd}
-              leftIcon={<UserPlusIcon className="h-4 w-4" />}
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
             >
-              Add New User
+              <UserPlusIcon className="h-5 w-5 mr-2" />
+              Add User
             </Button>
           </div>
         </div>
 
-        {/* User Table */}
-        <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
-          {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
-            </div>
-          ) : (
-            <Table<User>
-              data={filteredUsers}
-              columns={columns}
-              isLoading={false}
-            />
-          )}
-        </div>
-      </div>
-
-      {/* User Form Modal */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        title={selectedUser ? 'Edit User' : 'Add New User'}
-        size="md"
-      >
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <InputField
-              id="iemis_code"
-              label="IEMIS Code"
-              required
-              value={formData.iemis_code}
-              onChange={handleChange}
-              placeholder="Enter IEMIS code"
-            />
-            
-            <InputField
-              id="email"
-              label="Email (optional)"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="user@example.com"
-            />
-          </div>
-          
-          {!selectedUser && (
-            <InputField
-              id="password"
-              label="Password"
-              type="password"
-              required={!selectedUser}
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Enter password"
-            />
-          )}
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Select
-              id="role"
-              label="Role"
-              value={formData.role}
-              onChange={handleChange}
-            >
-              <option value="admin">Admin</option>
-              <option value="school">School</option>
-            </Select>
-            
-            {formData.role === 'school' && (
-              <Select
-                id="school_id"
-                label="School"
-                required
-                value={formData.school_id || ''}
-                onChange={handleChange}
-              >
-                <option value="">-- Select a School --</option>
-                {schools.map(school => (
-                  <option key={school.id} value={school.id}>
-                    {school.iemisCode} - {school.name}
-                  </option>
-                ))}
-              </Select>
-            )}
-          </div>
-          
-          <div className="flex justify-end space-x-3 pt-4">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleCloseModal}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit"
-              leftIcon={selectedUser ? undefined : <UserPlusIcon className="h-4 w-4" />}
-            >
-              {selectedUser ? 'Update User' : 'Create User'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Delete Confirmation Modal */}
-      <Modal
-        isOpen={isDeleteModalOpen}
-        onClose={handleCloseDeleteModal}
-        title="Confirm Deletion"
-        size="sm"
-      >
-        <div className="space-y-6">
-          <div className="flex items-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
-            <div className="flex-shrink-0">
-              <div className="flex items-center justify-center h-10 w-10 rounded-full bg-red-100 dark:bg-red-900/30">
-                <TrashIcon className="h-6 w-6 text-red-600 dark:text-red-400" />
+        <div className="mt-8">
+          <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-lg">
+            <div className="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                <h2 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
+                  User Accounts
+                </h2>
+                <div className="mt-4 md:mt-0 w-full md:w-auto">
+                  <InputField
+                    id="search"
+                    type="text"
+                    placeholder="Search users..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full md:w-64"
+                  />
+                </div>
               </div>
             </div>
-            <div className="ml-4">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Delete User</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Are you sure you want to delete the user <span className="font-semibold">{selectedUser?.iemis_code}</span>? 
-                This action cannot be undone.
-              </p>
+            
+            <div className="px-4 py-5 sm:p-6">
+              {loading ? (
+                <div className="flex justify-center items-center h-64">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+                </div>
+              ) : (
+                <Table
+                  data={filteredUsers}
+                  columns={columns}
+                  isLoading={false}
+                />
+              )}
             </div>
           </div>
-          
-          <div className="flex justify-end space-x-3">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleCloseDeleteModal}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="danger"
-              leftIcon={<TrashIcon className="h-4 w-4" />}
-              onClick={confirmDelete}
-            >
-              Delete
-            </Button>
-          </div>
         </div>
-      </Modal>
+
+        {/* User Form Modal */}
+        <Modal
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          title={selectedUser ? 'Edit User' : 'Add New User'}
+          size="md"
+        >
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <InputField
+                id="email"
+                label="Email"
+                required
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="Enter email"
+                type="email"
+              />
+              
+              {!selectedUser && (
+                <InputField
+                  id="password"
+                  label="Password"
+                  type="password"
+                  required={!selectedUser}
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="Enter password"
+                />
+              )}
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="role" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Role
+                </label>
+                <select
+                  id="role"
+                  value={formData.role}
+                  onChange={handleChange}
+                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="school">School User</option>
+                  <option value="admin">Administrator</option>
+                </select>
+              </div>
+              
+              {formData.role === 'school' && (
+                <div>
+                  <label htmlFor="school_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    School
+                  </label>
+                  <select
+                    id="school_id"
+                    value={formData.school_id || ''}
+                    onChange={handleChange}
+                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    required={formData.role === 'school'}
+                  >
+                    <option value="">Select a school</option>
+                    {schools.map(school => (
+                      <option key={school.id} value={school.id}>
+                        {school.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex justify-end space-x-3 pt-4">
+              <Button
+                type="button"
+                onClick={handleCloseModal}
+                variant="secondary"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={loading}
+              >
+                {selectedUser ? 'Update User' : 'Create User'}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+
+        {/* Delete Confirmation Modal */}
+        <Modal
+          isOpen={isDeleteModalOpen}
+          onClose={handleCloseDeleteModal}
+          title="Delete User"
+          size="sm"
+        >
+          <div className="space-y-4">
+            <p className="text-gray-500 dark:text-gray-400">
+              Are you sure you want to delete this user? This action cannot be undone.
+            </p>
+            
+            {selectedUser && (
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                <div className="flex items-center">
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {selectedUser.email || 'N/A'}
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {getRoleDisplayName(selectedUser.role)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <div className="flex justify-end space-x-3 pt-4">
+              <Button
+                type="button"
+                onClick={handleCloseDeleteModal}
+                variant="secondary"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={confirmDelete}
+                variant="danger"
+                disabled={loading}
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      </div>
     </div>
   );
 };

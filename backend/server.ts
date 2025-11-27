@@ -1,6 +1,8 @@
 import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import logger from './services/logger';
 import schoolsRouter from './routes/schools';
 import studentsRouter from './routes/students';
@@ -13,6 +15,10 @@ import applicationSettingsRouter from './routes/applicationSettings';
 import excelUploadRouter from './routes/excelUpload';
 import otpRouter from './routes/otpRoutes';
 import { authenticateToken } from './middleware/authMiddleware';
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app: Application = express();
 const PORT = process.env.PORT || 3002; // Changed to 3002 as per project configuration
@@ -92,6 +98,17 @@ app.get('/api/health', (req: Request, res: Response) => {
     message: 'API is running successfully'
   });
 });
+
+// Serve static files in production
+if (process.env.NODE_ENV === 'production') {
+  // Serve the static files from the dist directory
+  app.use(express.static(path.join(__dirname, '..', 'dist')));
+  
+  // Handle React routing, return all requests to React app
+  app.use((req: Request, res: Response) => {
+    res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
+  });
+}
 
 app.listen(PORT, () => {
   logger.info(`Server is running on port ${PORT}`);

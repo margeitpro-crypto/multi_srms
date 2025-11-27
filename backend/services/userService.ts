@@ -4,7 +4,6 @@ import { query } from './dbService';
 // User interface
 export interface User {
   id: number;
-  iemis_code: string;
   email: string | null;
   password_hash: string;
   role: 'admin' | 'school';
@@ -15,7 +14,6 @@ export interface User {
 
 // Create a new user
 export async function createUser(userData: { 
-  iemis_code: string;
   email?: string; 
   password: string; 
   role: 'admin' | 'school'; 
@@ -26,22 +24,12 @@ export async function createUser(userData: {
   const password_hash = await bcrypt.hash(userData.password, saltRounds);
   
   const result = await query(
-    `INSERT INTO users (iemis_code, email, password_hash, role, school_id) 
-     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-    [userData.iemis_code, userData.email || null, password_hash, userData.role, userData.school_id || null]
+    `INSERT INTO users (email, password_hash, role, school_id) 
+     VALUES ($1, $2, $3, $4) RETURNING *`,
+    [userData.email || null, password_hash, userData.role, userData.school_id || null]
   );
   
   return result.rows[0];
-}
-
-// Get user by IEMIS Code
-export async function getUserByIemisCode(iemisCode: string): Promise<User | null> {
-  const result = await query(
-    `SELECT * FROM users 
-     WHERE iemis_code = $1`,
-    [iemisCode]
-  );
-  return result.rows[0] || null;
 }
 
 // Get user by Email
@@ -73,7 +61,6 @@ export async function getUsersBySchoolId(schoolId: number): Promise<User[]> {
 
 // Update user
 export async function updateUser(id: number, userData: Partial<{
-  iemis_code: string;
   email: string | null;
   role: 'admin' | 'school';
   school_id: number | null;
@@ -81,11 +68,6 @@ export async function updateUser(id: number, userData: Partial<{
   const fields = [];
   const values = [];
   let index = 1;
-  
-  if (userData.iemis_code !== undefined) {
-    fields.push(`iemis_code = $${index++}`);
-    values.push(userData.iemis_code);
-  }
   
   if (userData.email !== undefined) {
     fields.push(`email = $${index++}`);
@@ -150,7 +132,6 @@ export async function verifyPassword(plainPassword: string, hashedPassword: stri
 
 export default {
   createUser,
-  getUserByIemisCode,
   getUserByEmail,
   getUserById,
   getUsersBySchoolId,

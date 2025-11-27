@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { createUser, getUserByIemisCode, getAllUsers, updateUser, deleteUser, verifyPassword, getUserById, getUserByEmail, getUsersBySchoolId, updateUserPassword } from '../services/userService';
+import { createUser, getAllUsers, updateUser, deleteUser, verifyPassword, getUserById, getUserByEmail, getUsersBySchoolId, updateUserPassword } from '../services/userService';
 import { register, login } from '../services/authService';
 import logger from '../services/logger';
 
@@ -58,20 +58,20 @@ router.get('/:id', async (req: Request, res: Response) => {
 // POST /api/users - Create a new user (admin only)
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { iemis_code, email, password, role, school_id } = req.body;
+    const { email, password, role, school_id } = req.body;
     
     // Validate required fields
-    if (!iemis_code || !password || !role) {
-      return res.status(400).json({ error: 'IEMIS Code, password, and role are required' });
+    if (!password || !role) {
+      return res.status(400).json({ error: 'Password and role are required' });
     }
     
-    const newUser = await createUser({ iemis_code, email, password, role, school_id });
+    const newUser = await createUser({ email, password, role, school_id });
     logger.info('User created', { userId: newUser.id });
     res.status(201).json(newUser);
   } catch (err: any) {
     logger.error('Error creating user:', err);
     if (err.message && err.message.includes('duplicate key')) {
-      res.status(400).json({ error: 'User with this IEMIS Code already exists' });
+      res.status(400).json({ error: 'User with this email already exists' });
     } else {
       res.status(500).json({ error: 'Failed to create user' });
     }
@@ -86,9 +86,9 @@ router.put('/:id', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid user ID' });
     }
     
-    const { iemis_code, email, role, school_id } = req.body;
+    const { email, role, school_id } = req.body;
     
-    const updatedUser = await updateUser(id, { iemis_code, email, role, school_id });
+    const updatedUser = await updateUser(id, { email, role, school_id });
     if (!updatedUser) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -125,23 +125,23 @@ router.delete('/:id', async (req: Request, res: Response) => {
 // POST /api/users/login - User login
 router.post('/login', async (req: Request, res: Response) => {
   try {
-    const { identifier, password } = req.body;
+    const { email, password } = req.body;
     
     // Validate required fields
-    if (!identifier || !password) {
-      return res.status(400).json({ error: 'Identifier and password are required' });
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
     }
     
     // Attempt to login
-    const { user, token, error } = await login(identifier, password);
+    const { user, token, error } = await login(email, password);
     
     if (error) {
-      logger.warn('Login failed', { identifier, error });
+      logger.warn('Login failed', { email, error });
       return res.status(401).json({ error });
     }
     
     if (!user || !token) {
-      logger.warn('Login failed - unexpected error', { identifier });
+      logger.warn('Login failed - unexpected error', { email });
       return res.status(401).json({ error: 'Login failed' });
     }
     
@@ -153,7 +153,6 @@ router.post('/login', async (req: Request, res: Response) => {
       token,
       user: {
         id: user.id,
-        iemis_code: user.iemis_code,
         email: user.email,
         role: user.role,
         school_id: user.school_id
@@ -168,23 +167,23 @@ router.post('/login', async (req: Request, res: Response) => {
 // POST /api/users/register - User registration
 router.post('/register', async (req: Request, res: Response) => {
   try {
-    const { iemis_code, email, password, role, school_id } = req.body;
+    const { email, password, role, school_id } = req.body;
     
     // Validate required fields
-    if (!iemis_code || !password || !role) {
-      return res.status(400).json({ error: 'IEMIS Code, password, and role are required' });
+    if (!password || !role) {
+      return res.status(400).json({ error: 'Password and role are required' });
     }
     
     // Register user
-    const { user, error } = await register({ iemis_code, email, password, role, school_id });
+    const { user, error } = await register({ email, password, role, school_id });
     
     if (error) {
-      logger.warn('Registration failed', { iemis_code, email, error });
+      logger.warn('Registration failed', { email, error });
       return res.status(400).json({ error });
     }
     
     if (!user) {
-      logger.error('Registration failed - unexpected error', { iemis_code, email });
+      logger.error('Registration failed - unexpected error', { email });
       return res.status(500).json({ error: 'Registration failed' });
     }
     
@@ -194,7 +193,6 @@ router.post('/register', async (req: Request, res: Response) => {
       message: 'Registration successful',
       user: {
         id: user.id,
-        iemis_code: user.iemis_code,
         email: user.email,
         role: user.role,
         school_id: user.school_id
@@ -229,24 +227,21 @@ router.post('/change-password', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'New password must be different from current password' });
     }
     
-    // Get the current user
-    const user = await getUserById(userId);
-    if (!user) {
-      logger.warn('User not found for password change', { userId });
+    // First verify the current password
+    const currentUser = await getUserById(userId);
+    if (!currentUser) {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    // Verify current password
-    const isCurrentPasswordValid = await verifyPassword(currentPassword, user.password_hash);
+    const isCurrentPasswordValid = await verifyPassword(currentPassword, currentUser.password_hash);
     if (!isCurrentPasswordValid) {
-      logger.warn('Password change failed - invalid current password', { userId });
-      return res.status(401).json({ error: 'Current password is incorrect' });
+      return res.status(400).json({ error: 'Current password is incorrect' });
     }
     
-    // Update password
+    // Update the password
     const updatedUser = await updateUserPassword(userId, newPassword);
+    
     if (!updatedUser) {
-      logger.error('Failed to update password', { userId });
       return res.status(500).json({ error: 'Failed to update password' });
     }
     

@@ -16,7 +16,6 @@ const RegisterPage: React.FC = () => {
         email: '',
         password: '',
         confirmPassword: '',
-        iemisCode: '',
         role: 'school' as 'admin' | 'school',
         schoolId: ''
     });
@@ -33,7 +32,7 @@ const RegisterPage: React.FC = () => {
         e.preventDefault();
         
         // Validation
-        if (!formData.email || !formData.password || !formData.iemisCode) {
+        if (!formData.email || !formData.password) {
             addToast('Please fill in all required fields', 'error');
             return;
         }
@@ -56,7 +55,6 @@ const RegisterPage: React.FC = () => {
         const schoolId = formData.schoolId ? parseInt(formData.schoolId, 10) : undefined;
         
         const success = await register(
-            formData.iemisCode,
             formData.email, 
             formData.password, 
             formData.role, 
@@ -92,18 +90,6 @@ const RegisterPage: React.FC = () => {
                             onChange={handleChange as any}
                             required
                             placeholder="Enter your email"
-                        />
-                    </div>
-                    
-                    <div>
-                        <InputField
-                            id="iemisCode"
-                            label="IEMIS Code"
-                            type="text"
-                            value={formData.iemisCode}
-                            onChange={handleChange as any}
-                            required
-                            placeholder="Enter your IEMIS code"
                         />
                     </div>
                     

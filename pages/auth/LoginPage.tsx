@@ -11,7 +11,7 @@ const LoginPage: React.FC = () => {
     const { addToast } = useAppContext();
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
-        identifier: '',
+        email: '',
         password: '',
         rememberMe: false,
     });
@@ -27,12 +27,12 @@ const LoginPage: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        if (!formData.identifier || !formData.password) {
-            addToast('Please enter both identifier and password', 'error');
+        if (!formData.email || !formData.password) {
+            addToast('Please enter both email and password', 'error');
             return;
         }
         
-        const success = await login(formData.identifier, formData.password);
+        const success = await login(formData.email, formData.password);
         if (!success) {
             addToast('Login failed. Please check your credentials and try again.', 'error');
         }
@@ -47,19 +47,19 @@ const LoginPage: React.FC = () => {
                     </div>
                     <h1 className="text-3xl font-bold text-gray-800 dark:text-white">School Records Management</h1>
                     <p className="text-gray-600 dark:text-gray-300 mt-2">Sign in to your account</p>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Use IEMIS code or email</p>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Use your email and password</p>
                 </div>
                 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
                         <InputField
-                            id="identifier"
-                            label="IEMIS Code or Email"
-                            type="text"
-                            value={formData.identifier}
+                            id="email"
+                            label="Email"
+                            type="email"
+                            value={formData.email}
                             onChange={handleChange}
                             required
-                            placeholder="Enter your IEMIS code or email"
+                            placeholder="Enter your email"
                         />
                     </div>
                     

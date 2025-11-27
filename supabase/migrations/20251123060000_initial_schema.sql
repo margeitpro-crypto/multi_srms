@@ -1,8 +1,11 @@
 -- =================================================================
 -- PostgreSQL Database Schema for Multi-School Result Management System
--- Version 2.3
+-- Version 2.4
 -- =================================================================
 -- Changelog:
+-- v2.4:
+--   - Removed iemis_code column from users table
+--   - Updated users table to use email as primary identifier
 -- v2.3:
 --   - Modified users table to use iemis_code instead of email for authentication
 --   - Added iemis_code column to users table
@@ -55,8 +58,7 @@ CREATE TABLE schools (
 -- =============================================
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
-    iemis_code VARCHAR(50) UNIQUE NOT NULL,
-    email VARCHAR(255) UNIQUE,  -- Email is now optional
+    email VARCHAR(255) UNIQUE,  -- Email is now the primary identifier
     password_hash VARCHAR(255) NOT NULL,
     role user_role NOT NULL,
     -- A user can be associated with a specific school (e.g., a school account).

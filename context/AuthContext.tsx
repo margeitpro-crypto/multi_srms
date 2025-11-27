@@ -9,7 +9,6 @@ type Role = 'admin' | 'school';
 // Define the user type based on the backend User interface
 interface User {
   id: number;
-  iemis_code: string;
   email: string | null;
   role: Role;
   school_id: number | null;
@@ -21,9 +20,9 @@ interface AuthContextType {
   loggedInSchool: School | null;
   currentUser: User | null;
   setLoggedInSchool: (school: School | null) => void;
-  login: (identifier: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
-  register: (iemisCode: string, email: string, password: string, role: Role, schoolId?: number) => Promise<boolean>;
+  register: (email: string, password: string, role: Role, schoolId?: number) => Promise<boolean>;
   isLoading: boolean;
 }
 
@@ -58,7 +57,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           // Create user object compatible with existing code
           const user: User = {
             id: session.user.id,
-            iemis_code: session.user.iemis_code,
             email: session.user.email,
             role: session.user.role,
             school_id: session.user.school_id
@@ -92,10 +90,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     checkUserSession();
   }, [location.hash, navigate]);
 
-  const login = async (identifier: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      const { session, error } = await loginUser(identifier, password);
+      const { session, error } = await loginUser(email, password);
       
       if (error) {
         addToast(error || 'Login failed', 'error');
@@ -109,7 +107,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Create user object compatible with existing code
         const user: User = {
           id: session.user.id,
-          iemis_code: session.user.iemis_code,
           email: session.user.email,
           role: session.user.role,
           school_id: session.user.school_id
@@ -146,7 +143,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const register = async (
-    iemisCode: string,
     email: string,
     password: string,
     role: Role,
@@ -154,7 +150,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   ): Promise<boolean> => {
     setIsLoading(true);
     try {
-      const { user, error } = await registerUser(iemisCode, email, password, role, schoolId);
+      const { user, error } = await registerUser(email, password, role, schoolId);
       
       if (error) {
         addToast(error || 'Registration failed', 'error');

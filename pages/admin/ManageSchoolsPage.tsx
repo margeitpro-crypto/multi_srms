@@ -305,11 +305,17 @@ const ManageSchoolsPage: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [showPreview, setShowPreview] = useState(false);
+  const [csvFileContent, setCsvFileContent] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
+  
+  // Add loading states for actions
+  const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Add refresh function
   const refreshSchools = async () => {
@@ -339,7 +345,8 @@ const ManageSchoolsPage: React.FC = () => {
       school.headTeacherName.toLowerCase().includes(query) ||
       school.email?.toLowerCase().includes(query) ||
       school.status.toLowerCase().includes(query) ||
-      school.subscriptionPlan.toLowerCase().includes(query)
+      school.subscriptionPlan.toLowerCase().includes(query) ||
+      school.estd.toLowerCase().includes(query)
     );
   }, [schools, searchQuery]);
 
@@ -427,7 +434,7 @@ const ManageSchoolsPage: React.FC = () => {
       const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
       
       // Validate required headers
-      const requiredHeaders = ['IEMIS Code', 'School Name', 'Municipality', 'Estd', 'Prepared By', 'Checked By', 'Head Teacher', 'Contact'];
+      const requiredHeaders = ['IEMIS Code', 'School Name', 'Municipality', 'Estd', 'Prepared By', 'Checked By', 'Head Teacher', 'Contact', 'Subscription Plan'];
       const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
       
       if (missingHeaders.length > 0) {
@@ -457,6 +464,7 @@ const ManageSchoolsPage: React.FC = () => {
       // Show preview
       setPreviewData(previewRows);
       setShowPreview(true);
+      setCsvFileContent(text);
       
       // Note: Actual import will be handled in a separate function after user confirmation
     } catch (error) {
@@ -466,18 +474,23 @@ const ManageSchoolsPage: React.FC = () => {
   };
 
   const confirmImport = async () => {
-    if (previewData.length === 0) return;
+    if (!csvFileContent) return;
     
     setIsImporting(true);
     
     try {
-      // Process all data rows
+      const lines = csvFileContent.split('\n').filter(line => line.trim() !== '');
+      const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+
       const newSchools: Omit<School, 'id'>[] = [];
       
-      // In a real implementation, we would read the full file again here
-      // For now, we'll just use the preview data as a sample
-      for (const rowData of previewData) {
-        // Map to School object
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
+        const rowData: any = {};
+        headers.forEach((header, index) => {
+          rowData[header] = values[index];
+        });
+
         newSchools.push({
           iemisCode: rowData['IEMIS Code'],
           name: rowData['School Name'],
@@ -516,6 +529,7 @@ const ManageSchoolsPage: React.FC = () => {
       // Close preview
       setShowPreview(false);
       setPreviewData([]);
+      setCsvFileContent(null);
       
       if (errorCount === 0) {
         addToast(`${successCount} schools imported successfully!`, 'success');
@@ -542,9 +556,10 @@ const ManageSchoolsPage: React.FC = () => {
   
   const handleSave = async (schoolData: School) => {
     try {
-      console.log('Saving school data:', schoolData); // Debug log
+      console.log('Saving school data:', schoolData);
       
       if (schoolData.id && schoolData.id > 0) { // Update
+        setIsUpdating(true);
         // Update school in database
         const updatedSchool = await schoolsApi.update(schoolData.id, {
           iemisCode: schoolData.iemisCode,
@@ -564,6 +579,7 @@ const ManageSchoolsPage: React.FC = () => {
         setSchools(schools.map(s => s.id === schoolData.id ? updatedSchool : s));
         addToast(`School "${schoolData.name}" updated successfully!`, 'success');
       } else { // Add
+        setIsCreating(true);
         // Create school in database
         const newSchool = await schoolsApi.create({
           iemisCode: schoolData.iemisCode,
@@ -607,6 +623,9 @@ const ManageSchoolsPage: React.FC = () => {
       }
       
       addToast(errorMessage, 'error');
+    } finally {
+      setIsCreating(false);
+      setIsUpdating(false);
     }
   };
 
@@ -621,6 +640,7 @@ const ManageSchoolsPage: React.FC = () => {
 
   const confirmDelete = async () => {
     if (schoolToDelete) {
+      setIsDeleting(true);
       try {
         await schoolsApi.delete(schoolToDelete.id);
         setSchools(schools.filter(s => s.id !== schoolToDelete.id));
@@ -646,6 +666,7 @@ const ManageSchoolsPage: React.FC = () => {
         
         addToast(errorMessage, 'error');
       } finally {
+        setIsDeleting(false);
         setSchoolToDelete(null);
         setIsConfirmModalOpen(false);
       }
@@ -669,7 +690,7 @@ const ManageSchoolsPage: React.FC = () => {
     { 
       header: 'IEMIS No', 
       accessor: 'iemisCode' as const,
-      className: 'font-medium text-gray-900 dark:text-white'
+      className: 'font-medium text-gray-900 dark:text-white whitespace-nowrap'
     },
     { 
       header: 'School Name', 
@@ -694,7 +715,7 @@ const ManageSchoolsPage: React.FC = () => {
     { 
       header: 'Estd', 
       accessor: 'estd' as const,
-      className: 'text-gray-500 dark:text-gray-400'
+      className: 'text-gray-500 dark:text-gray-400 whitespace-nowrap'
     },
     { 
       header: 'Status', 
@@ -783,8 +804,9 @@ const ManageSchoolsPage: React.FC = () => {
           <Button 
             onClick={handleAdd}
             leftIcon={<UserPlusIcon className="h-4 w-4" />}
+            disabled={isCreating}
           >
-            Add School
+            {isCreating ? 'Adding...' : 'Add School'}
           </Button>
         </div>
       </div>
@@ -801,6 +823,7 @@ const ManageSchoolsPage: React.FC = () => {
                 <IconButton 
                   size="sm" 
                   className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  disabled={isDeleting}
                 >
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
@@ -823,10 +846,11 @@ const ManageSchoolsPage: React.FC = () => {
               <DropdownMenuItem 
                 onClick={() => handleDelete(school)}
                 className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
+                disabled={isDeleting}
               >
                 <div className="flex items-center">
                   <TrashIcon className="w-4 h-4 mr-2" />
-                  <span>Delete</span>
+                  <span>{isDeleting ? 'Deleting...' : 'Delete'}</span>
                 </div>
               </DropdownMenuItem>
             </DropdownMenu>
@@ -845,6 +869,11 @@ const ManageSchoolsPage: React.FC = () => {
         size="lg"
       >
         <SchoolForm school={selectedSchool} onSave={handleSave} onClose={() => setIsModalOpen(false)} />
+        {(isCreating || isUpdating) && (
+          <div className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
+            {isCreating ? 'Creating school...' : 'Updating school...'}
+          </div>
+        )}
       </Modal>
 
       <Modal
@@ -852,6 +881,7 @@ const ManageSchoolsPage: React.FC = () => {
         onClose={() => {
           setShowPreview(false);
           setPreviewData([]);
+          setCsvFileContent(null);
         }}
         title="Import Preview"
         size="lg"
@@ -899,6 +929,7 @@ const ManageSchoolsPage: React.FC = () => {
               onClick={() => {
                 setShowPreview(false);
                 setPreviewData([]);
+                setCsvFileContent(null);
               }}
             >
               Cancel

@@ -5,166 +5,95 @@ import { Client } from 'pg';
 // Load environment variables
 dotenv.config();
 
+// Database connection configuration
+const dbConfig = {
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || '5432'),
+  database: process.env.DB_NAME || 'multi_srms',
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'postgres',
+};
+
+// Sample admin user
+const sampleAdmin = {
+  email: 'admin@example.com',
+  password: 'admin123',
+  role: 'admin'
+};
+
 async function initAuthSystem() {
-  console.log('Initializing authentication system...');
-  
-  const client = new Client({
-    connectionString: process.env.SUPABASE_DB_URL,
-    ssl: { rejectUnauthorized: false }
-  });
+  const client = new Client(dbConfig);
   
   try {
+    // Connect to database
     await client.connect();
-    console.log('✅ Connected to database');
+    console.log('Connected to database');
     
-    // Create ENUM types if they don't exist
-    console.log('Creating ENUM types...');
-    try {
-      await client.query('CREATE TYPE user_role AS ENUM (\'admin\', \'school\')');
-      console.log('  ✅ Created user_role ENUM');
-    } catch (error: any) {
-      if (error.code === '42710') { // Duplicate object error
-        console.log('  ℹ️  user_role ENUM already exists');
-      } else {
-        throw error;
-      }
-    }
+    // Check if users table exists
+    const tableCheck = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'users'
+      )
+    `);
     
-    // Create users table if it doesn't exist
-    console.log('Creating users table...');
-    try {
+    if (!tableCheck.rows[0].exists) {
+      console.log('Users table does not exist. Creating it...');
+      
+      // Create users table without iemis_code
       await client.query(`
         CREATE TABLE users (
           id SERIAL PRIMARY KEY,
-          iemis_code VARCHAR(50) UNIQUE NOT NULL,
-          email VARCHAR(255) UNIQUE,  -- Email is now optional
+          email VARCHAR(255) UNIQUE,
           password_hash VARCHAR(255) NOT NULL,
           role user_role NOT NULL,
-          -- A user can be associated with a specific school (e.g., a school account).
-          -- ON DELETE SET NULL: If a school is deleted, the associated user account is not deleted, 
-          -- but its link to the school is severed. This prevents accidental user deletion.
           school_id INTEGER REFERENCES schools(id) ON DELETE SET NULL,
           created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
         )
       `);
-      console.log('  ✅ Created users table');
-    } catch (error: any) {
-      if (error.code === '42P07') { // Duplicate table error
-        console.log('  ℹ️  users table already exists');
-      } else {
-        throw error;
-      }
-    }
-    
-    // Create indexes if they don't exist
-    console.log('Creating indexes...');
-    try {
-      await client.query('CREATE INDEX idx_users_school_id ON users(school_id)');
-      console.log('  ✅ Created index on users.school_id');
-    } catch (error: any) {
-      if (error.code === '42P07') { // Duplicate table error
-        console.log('  ℹ️  Index on users.school_id already exists');
-      } else {
-        throw error;
-      }
-    }
-    
-    // Create triggers for updated_at if they don't exist
-    console.log('Creating triggers...');
-    try {
-      await client.query(`
-        CREATE OR REPLACE FUNCTION update_updated_at_column()
-        RETURNS TRIGGER AS $$
-        BEGIN
-          NEW.updated_at = NOW();
-          RETURN NEW;
-        END;
-        $$ language 'plpgsql'
-      `);
       
-      await client.query(`
-        CREATE OR REPLACE FUNCTION apply_updated_at_trigger(table_name TEXT)
-        RETURNS VOID AS $$
-        BEGIN
-          EXECUTE 'CREATE TRIGGER update_' || table_name || '_updated_at
-                   BEFORE UPDATE ON ' || table_name || '
-                   FOR EACH ROW
-                   EXECUTE FUNCTION update_updated_at_column();';
-        END;
-        $$ language 'plpgsql'
-      `);
+      console.log('✅ Users table created successfully');
+    } else {
+      console.log('✅ Users table already exists');
+    }
+    
+    // Check if sample admin user exists
+    const userCheck = await client.query(
+      'SELECT id FROM users WHERE email = $1',
+      [sampleAdmin.email]
+    );
+    
+    if (userCheck.rows.length === 0) {
+      console.log('Sample admin user does not exist. Creating it...');
       
-      await client.query('SELECT apply_updated_at_trigger(\'users\')');
-      console.log('  ✅ Created triggers for users table');
-    } catch (error) {
-      console.log('  ℹ️  Triggers may already exist');
+      // Hash the password
+      const saltRounds = 10;
+      const passwordHash = await bcrypt.hash(sampleAdmin.password, saltRounds);
+      
+      // Insert sample admin user
+      await client.query(
+        `INSERT INTO users (email, password_hash, role) VALUES ($1, $2, $3)`,
+        [sampleAdmin.email, passwordHash, sampleAdmin.role]
+      );
+      
+      console.log('✅ Sample admin user created successfully');
+    } else {
+      console.log('✅ Sample admin user already exists');
     }
     
-    // Insert sample users
-    console.log('Inserting sample users...');
-    const sampleUsers = [
-      {
-        id: 1,
-        iemis_code: 'ADMIN001',
-        email: 'admin@example.com',
-        password: 'admin123',
-        role: 'admin',
-        school_id: null
-      },
-      {
-        id: 2,
-        iemis_code: 'SCHOOL001',
-        email: 'school1@example.com',
-        password: 'school123',
-        role: 'school',
-        school_id: 1
-      },
-      {
-        id: 3,
-        iemis_code: 'SCHOOL002',
-        email: 'school2@example.com',
-        password: 'school123',
-        role: 'school',
-        school_id: 2
-      }
-    ];
+    console.log('\n🎉 Authentication system initialized successfully!');
+    console.log(`   Admin user: ${sampleAdmin.email}`);
+    console.log(`   Admin password: ${sampleAdmin.password}`);
+    console.log('\n⚠️  Remember to change the admin password after first login!');
     
-    for (const user of sampleUsers) {
-      try {
-        // Hash the password
-        const saltRounds = 10;
-        const password_hash = await bcrypt.hash(user.password, saltRounds);
-        
-        await client.query(
-          `INSERT INTO users (id, iemis_code, email, password_hash, role, school_id, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
-           ON CONFLICT (iemis_code) DO UPDATE SET
-             email = EXCLUDED.email,
-             password_hash = EXCLUDED.password_hash,
-             role = EXCLUDED.role,
-             school_id = EXCLUDED.school_id,
-             updated_at = NOW()`,
-          [user.id, user.iemis_code, user.email, password_hash, user.role, user.school_id]
-        );
-        console.log(`  ✅ User ${user.iemis_code} inserted/updated`);
-      } catch (error) {
-        console.error(`  ❌ Error inserting user ${user.iemis_code}:`, error);
-      }
-    }
-    
-    // Verify users were inserted
-    const res = await client.query('SELECT id, iemis_code, email, role, school_id FROM users ORDER BY id');
-    console.log('\nCurrent users in database:');
-    console.log(res.rows);
-    
-    console.log('\n✅ Authentication system initialization completed');
-    
-  } catch (error) {
-    console.error('Error:', error);
+  } catch (err) {
+    console.error('Database error:', err);
   } finally {
     await client.end();
+    console.log('\nDisconnected from database');
   }
 }
 
+// Run the function
 initAuthSystem();

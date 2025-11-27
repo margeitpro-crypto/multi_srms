@@ -6,7 +6,6 @@ interface LoginResponse {
   token: string;
   user: {
     id: number;
-    iemis_code: string;
     email: string | null;
     role: 'admin' | 'school';
     school_id: number | null;
@@ -50,17 +49,18 @@ api.interceptors.response.use(
     }
     return response;
   },
-  error => {
-    console.log('API Error:', error.response?.status, error.response?.data);
-    // If unauthorized, remove auth tokens but don't automatically redirect
-    // This prevents reload loops
+  (error) => {
+    // Handle unauthorized access
     if (error.response?.status === 401) {
+      // Clear auth data on unauthorized access
       if (typeof window !== 'undefined' && window.localStorage) {
         localStorage.removeItem('authToken');
         localStorage.removeItem('currentUser');
       }
-      // Let the application handle the redirect logic instead of forcing it here
-      console.log('Unauthorized - token removed, application should handle redirect');
+      // Redirect to login page
+      if (typeof window !== 'undefined' && window.location) {
+        window.location.href = '/#/login';
+      }
     }
     return Promise.reject(error);
   }

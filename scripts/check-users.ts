@@ -1,66 +1,75 @@
-import dotenv from 'dotenv';
 import { Client } from 'pg';
+import dotenv from 'dotenv';
 
 // Load environment variables
 dotenv.config();
 
+// Database connection configuration
+const dbConfig = {
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || '5432'),
+  database: process.env.DB_NAME || 'multi_srms',
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'postgres',
+};
+
+// Sample users to check/create
+const sampleUsers = [
+  { email: 'margeitpro@gmail.com', password: 'securePass123', role: 'admin' },
+  { email: 'tsguideman@gmail.com', password: 'securePass123', role: 'school' },
+  { email: 'itmsinghyt@gmail.com', password: 'securePass123', role: 'school' },
+  { email: 'office@sunrise.edu.np', password: 'securePass123', role: 'school' },
+  { email: 'director@riverside.edu.np', password: 'securePass123', role: 'school' }
+];
+
 async function checkUsers() {
-  console.log('Checking users in database...');
-  
-  const client = new Client({
-    connectionString: process.env.SUPABASE_DB_URL,
-    ssl: { rejectUnauthorized: false }
-  });
+  const client = new Client(dbConfig);
   
   try {
+    // Connect to database
     await client.connect();
-    console.log('✅ Connected to database');
+    console.log('Connected to database');
     
-    // Check if users table exists
-    const tableCheck = await client.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_name = 'users'
-      )
-    `);
+    // Check existing users
+    const res = await client.query('SELECT id, email, role, school_id FROM users ORDER BY id');
+    console.log('\nExisting users:');
+    res.rows.forEach(user => {
+      console.log(`  ${user.email} (${user.role}) - ID: ${user.id}`);
+    });
     
-    if (!tableCheck.rows[0].exists) {
-      console.log('❌ Users table does not exist');
-      return;
-    }
-    
-    console.log('✅ Users table exists');
-    
-    // Get all users
-    const res = await client.query('SELECT id, iemis_code, email, role, school_id FROM users ORDER BY id');
-    console.log('Current users:');
-    console.log(res.rows);
-    
-    // Check if we have the sample users mentioned in the task
-    const sampleUsers = [
-      { iemis_code: '9827792360', email: 'margeitpro@gmail.com', role: 'admin' },
-      { iemis_code: '9827792361', email: 'tsguideman@gmail.com', role: 'school' },
-      { iemis_code: '9827792362', email: 'itmsinghyt@gmail.com', role: 'school' },
-      { iemis_code: '9827792363', email: 'office@sunrise.edu.np', role: 'school' },
-      { iemis_code: '9827792364', email: 'director@riverside.edu.np', role: 'school' }
-    ];
-    
-    console.log('\nChecking for sample users:');
+    // Check if sample users exist
+    console.log('\nChecking sample users:');
     for (const sampleUser of sampleUsers) {
-      const userExists = res.rows.some(user => 
-        user.iemis_code === sampleUser.iemis_code && 
-        user.email === sampleUser.email && 
-        user.role === sampleUser.role
+      const userRes = await client.query(
+        'SELECT id, email, role FROM users WHERE email = $1', 
+        [sampleUser.email]
       );
       
-      console.log(`  ${sampleUser.iemis_code} (${sampleUser.email}) - ${userExists ? '✅ Found' : '❌ Not found'}`);
+      const userExists = userRes.rows.some(user => 
+        user.email === sampleUser.email
+      );
+      
+      console.log(`  ${sampleUser.email} (${sampleUser.role}) - ${userExists ? '✅ Found' : '❌ Not found'}`);
+      
+      // Create user if it doesn't exist
+      if (!userExists) {
+        console.log(`    Creating user...`);
+        // In a real implementation, you would hash the password here
+        await client.query(
+          `INSERT INTO users (email, password_hash, role) VALUES ($1, $2, $3)`,
+          [sampleUser.email, sampleUser.password, sampleUser.role]
+        );
+        console.log(`    ✅ User created successfully`);
+      }
     }
     
-  } catch (error) {
-    console.error('Error:', error);
+  } catch (err) {
+    console.error('Database error:', err);
   } finally {
     await client.end();
+    console.log('\nDisconnected from database');
   }
 }
 
+// Run the function
 checkUsers();

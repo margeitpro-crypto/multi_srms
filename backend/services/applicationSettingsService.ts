@@ -1,5 +1,30 @@
 import { query } from './dbService';
 
+/**
+ * Convert snake_case keys to camelCase keys in an object
+ * @param obj Object with snake_case keys
+ * @returns Object with camelCase keys
+ */
+function snakeToCamel(obj: any): any {
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(item => snakeToCamel(item));
+  }
+  
+  const camelObj: any = {};
+  for (const key in obj) {
+    if (obj.hasOwnProperty(key)) {
+      // Convert snake_case to camelCase
+      const camelKey = key.replace(/_([a-z])/g, (match, letter) => letter.toUpperCase());
+      camelObj[camelKey] = snakeToCamel(obj[key]);
+    }
+  }
+  return camelObj;
+}
+
 interface ApplicationSetting {
   id: number;
   key: string;
@@ -93,18 +118,21 @@ export const getSettings = async (keys: string[]): Promise<{[key: string]: any}>
 export const getAllSettings = async (): Promise<ApplicationSetting[]> => {
   try {
     const result = await query('SELECT * FROM application_settings ORDER BY key');
-    // Parse the JSON values
-    return result.rows.map(row => ({
-      ...row,
-      value: (() => {
-        try {
-          return JSON.parse(row.value);
-        } catch (parseError) {
-          // If parsing fails, return the raw value
-          return row.value;
-        }
-      })()
-    }));
+    // Parse the JSON values and convert snake_case to camelCase
+    return result.rows.map(row => {
+      const parsedRow = {
+        ...row,
+        value: (() => {
+          try {
+            return JSON.parse(row.value);
+          } catch (parseError) {
+            // If parsing fails, return the raw value
+            return row.value;
+          }
+        })()
+      };
+      return snakeToCamel(parsedRow);
+    });
   } catch (error) {
     console.error('Error fetching all settings:', error);
     throw error;
