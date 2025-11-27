@@ -99,13 +99,13 @@ app.get('/api/health', (req: Request, res: Response) => {
   });
 });
 
-// Serve static files in production
-if (process.env.NODE_ENV === 'production') {
+// Serve static files in production (this will be overridden by vercel-server.ts for Vercel)
+if (process.env.NODE_ENV === 'production' && !process.env.VERCEL) {
   // Serve the static files from the dist directory
   app.use(express.static(path.join(__dirname, '..', 'dist')));
   
   // Handle React routing, return all requests to React app
-  app.use((req: Request, res: Response) => {
+  app.get('*', (req: Request, res: Response) => {
     res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
   });
 }
